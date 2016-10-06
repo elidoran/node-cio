@@ -2,6 +2,7 @@ net = require 'net'
 assert = require 'assert'
 thru = require 'through2'
 buildCio = require '../../lib'
+buildTransformerListener = require '../../lib/transformer'
 
 # no builder options yet...
 cio = buildCio()
@@ -21,6 +22,79 @@ buildTransform = ->
     end: ->
 
 describe 'test transformer', ->
+
+  describe 'listener', ->
+
+    # use a fake transform object so we can verify it
+    fakeTransform = buildTransform()
+
+    # remember the options because they are passed to the builder too
+    # use a function so listener will call it to build the transform
+    builderOptions = transform:fakeTransform
+
+    # build the listener (which remembers these options due to scope)
+    listener = buildTransformerListener builderOptions
+
+    # pass a fake socket to the listener
+    fakeSocket =
+      pipe: (stream) ->
+        stream.pipedFrom = this
+        return stream
+      on: ->
+
+    # call the listener as if a new socket connection has been made
+    listener fakeSocket
+
+    it 'should return a listener function', ->
+      assert.equal (typeof listener), 'function'
+
+    it 'should call the builder to return the fakeTransform', ->
+      assert.strictEqual fakeSocket.transform, fakeTransform
+
+    it 'should pipe socket -> transform -> socket', ->
+      assert.equal fakeTransform.pipedFrom, fakeSocket
+      assert.equal fakeTransform.pipedTo, fakeSocket
+
+
+
+  describe 'listener with transform built from a function', ->
+
+    # use a fake transform object so we can verify it
+    fakeTransform = buildTransform()
+
+    # remember the options because they are passed to the builder too
+    # use a function so listener will call it to build the transform
+    builderOptions = transform: (optionsArg) ->
+      fakeTransform.options = optionsArg
+      return fakeTransform
+
+    # build the listener (which remembers these options due to scope)
+    listener = buildTransformerListener builderOptions
+
+    # pass a fake socket to the listener
+    fakeSocket =
+      pipe: (stream) ->
+        stream.pipedFrom = this
+        return stream
+      on: (event) ->
+
+    # call the listener as if a new socket connection has been made
+    listener fakeSocket
+
+    it 'should return a listener function', ->
+      assert.equal (typeof listener), 'function'
+
+    it 'should receive the builder options in the transform builder', ->
+      assert.strictEqual fakeTransform.options, builderOptions
+
+    it 'should build the fakeTransform and use it', ->
+      assert.strictEqual fakeSocket.transform, fakeTransform
+
+    it 'should pipe socket -> transform -> socket', ->
+      assert.equal fakeTransform.pipedFrom, fakeSocket
+      assert.equal fakeTransform.pipedTo, fakeSocket
+
+
 
   describe 'with client and server', ->
 

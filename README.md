@@ -235,9 +235,13 @@ These options are provided directly to the Node modules so options described by 
 This is a convenience so you don't have to write the file reading part.
 
 ```javascript
+// this uses my preferred aliases. You can use the Node names: key, cert, ca.
 var clientOrServerOptions = {
+  // example of specifying a path
   private: 'path/to/private/key/file'
+  // example of getting the buffer yourself
   , public: getPublicCertAsBuffer()
+  // example of having the buffer already and placing into an array
   , root: [rootCertBuffer]
 };
 ```

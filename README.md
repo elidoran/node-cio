@@ -31,6 +31,8 @@ cio.client({ transform: transformBuilder })
 npm install cio --save
 ```
 
+TODO: Create Table of Contents
+
 ## Usage
 
 ### Usage: Build module
@@ -218,6 +220,33 @@ client.on('mux', function(mx, client) { /* ... */ });
 
 // Do the same with cio.server(...) for server side transformer setup
 ```
+
+### Usage: Secured with TLS
+
+All the above can be changed to use secured communication by providing the necessary certificates as described in the [Node TLS documentation](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback) (and [createServer()](https://nodejs.org/docs/latest/api/tls.html#tls_tls_createserver_options_secureconnectionlistener)).
+
+Then `cio` will use the `tls` module, instead of `net`, to create the sockets. The options object is passed on to the `tls` functions **as-is** so all options supported by those modules may be spcified.
+
+Node uses the names: 'key', 'cert', and 'ca'. I prefer the names: 'private', 'public', and 'root'. So, either may be used.
+
+You may specify the file path to the certificate and it will be read into a buffer for you.
+Or, you may provide the buffer yourself.
+These options are provided directly to the Node modules so options described by them are allowed.
+This is a convenience so you don't have to write the file reading part.
+
+```javascript
+var clientOrServerOptions = {
+  private: 'path/to/private/key/file'
+  , public: getPublicCertAsBuffer()
+  , root: [rootCertBuffer]
+};
+```
+
+Both client and server also allow `rejectUnauthorized` which makes it *require* certificates and secured communication. See the [Node TLS documentation](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback).
+
+The server also supports the `requestCert` for client whitelist/blacklist support. See the  [authenticate-client](https://github.com/elidoran/node-cio/tree/master/authenticate-client.coffee) listener.
+
+
 
 ### Usage: Client vs Server
 

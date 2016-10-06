@@ -8,12 +8,8 @@ tls = require 'tls'
 # but, it's expected to require early on to discover if they're missing and
 # so they're near the top (easy to find)
 addListeners = require './add-listeners'
-buildRelistener   = require './relistener'
-multiplexor  = require './multiplex'
-eventor      = require './eventor'
-jsonify      = require './jsonify'
-authenticator= require './authenticate-client'
-transformer  = require './transformer'
+readCerts    = require './read-certs'
+relistener = require './relistener'
 
 module.exports = (builderOptions) ->
 
@@ -72,10 +68,7 @@ module.exports = (builderOptions) ->
 
     # 6. unless 'address-in-use' helper is specified to *not* be used, then add it
     # for 'listening' to retry listen() the config'd number of times with config'd delay
-    if isServer and not options.noRelisten
-      options.server = socket
-      socket.on 'listening', buildRelistener options
-      delete options.server
+    if isServer and not options.noRelisten then relistener server:socket
 
     # 7. all done
     return socket

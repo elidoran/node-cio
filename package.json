@@ -1,0 +1,53 @@
+{
+  "name": "cio",
+  "version": "0.1.0",
+  "description": "Conveniently create net/tls server/client sockets.",
+  "main": "lib",
+  "keywords": [
+    "connect",
+    "listen",
+    "net",
+    "reconnect",
+    "tls",
+    "secure",
+    "certificate",
+    "authenticate",
+    "whitelist",
+    "blacklist",
+    "socket",
+    "server",
+    "client",
+    "connection",
+    "secureConnection",
+    "rejectUnauthorized",
+    "requestCert"
+  ],
+  "author": "Eli Doran <eli+npm@elidoran.com>",
+  "license": "MIT",
+  "scripts": {
+    "compile": "coffee --bare --compile lib",
+    "clean": "rm -rf lib/*.js",
+    "prepublish": "npm run compile",
+    "postpublish": "npm run clean",
+    "test": "mocha --compilers coffee:coffee-script/register --reporter spec --bail --check-leaks test/lib"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/elidoran/node-cio.git"
+  },
+  "bugs": "http://github.com/elidoran/node-cio/issues",
+  "devDependencies": {
+    "coffee-script": "^1.11.1",
+    "mocha": "^2.5.3",
+    "through2": "^2.0.1"
+  },
+  "dependencies": {
+    "duplex-emitter": "^2.1.2",
+    "json-duplex-stream": "^1.2.0",
+    "mux-demux": "^3.7.9",
+    "reconnect-net": "^1.1.1"
+  },
+  "engines": {
+    "node": ">=0.12"
+  }
+}

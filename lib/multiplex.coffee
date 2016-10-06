@@ -1,6 +1,6 @@
 mux = require 'mux-demux'
 
-modules.exports = (options) ->
+module.exports = (options) ->
 
   # build the listener function and return it
   # usable for: 'connect', 'connection', and 'secureConnection' events

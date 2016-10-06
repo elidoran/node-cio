@@ -7,7 +7,7 @@ tls = require 'tls'
 # i dislike having to read all these when they may not be used even once...
 # but, it's expected to require early on to discover if they're missing and
 # so they're near the top (easy to find)
-addListeners = require 'add-listeners'
+addListeners = require './add-listeners'
 buildRelistener   = require './relistener'
 multiplexor  = require './multiplex'
 eventor      = require './eventor'

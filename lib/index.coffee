@@ -29,7 +29,13 @@ module.exports = (builderOptions) ->
     # combine options and defaultOptions now...
 
     # 1. secure if some options related to a secure connection are specified
-    secure = options.rejectUnauthorized or options.key? or options.requestCert
+    if options.rejectUnauthorized or options.key? or options.private? or options.requestCert
+      secure = true
+      # convert aliases
+      if options.private? then options.key = options.private
+      if options.public? then options.cert = options.public
+      if options.root? then options.ca = options.root
+
 
     # 2. choose creator and use its function to build the socket
     socket = do (isServer, secure) ->

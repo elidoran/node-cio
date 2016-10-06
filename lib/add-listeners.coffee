@@ -1,4 +1,8 @@
-
+multiplexor  = require './multiplex'
+eventor      = require './eventor'
+jsonify      = require './jsonify'
+authenticator= require './authenticate-client'
+transformer  = require './transformer'
 
 module.exports = (options, socket, whichEvents) ->
 

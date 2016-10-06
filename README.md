@@ -248,7 +248,7 @@ var clientOrServerOptions = {
 
 Both client and server also allow `rejectUnauthorized` which makes it *require* certificates and secured communication. See the [Node TLS documentation](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback).
 
-The server also supports the `requestCert` for client whitelist/blacklist support. See the  [authenticate-client](https://github.com/elidoran/node-cio/tree/master/authenticate-client.coffee) listener.
+The server also supports the `requestCert` for client whitelist/blacklist support. See the  [authenticate-client](https://github.com/elidoran/node-cio/blob/master/lib/authenticate-client.coffee) listener.
 
 
 
@@ -276,20 +276,20 @@ All defaults are *false* or *undefined*.
 
 Name        | type   | Client/Server | Description
 ----:       | :---:  | :------: | :-------
-[multiplex](https://github.com/elidoran/node-cio/tree/master/lib/multiplex.coffee)   | bool   | both | use `mux-demux` for multiplexing connection
-[eventor](https://github.com/elidoran/node-cio/tree/master/eventor.coffee)     | bool   | both | use `duplex-emitter`. if `multiplex` is true, create 'events' stream
-[jsonify](https://github.com/elidoran/node-cio/tree/master/jsonify.coffee)     | bool   | both | run connection thru `json-duplex-stream` for in+out
-[transform](https://github.com/elidoran/node-cio/tree/master/transformer.coffee)   | Transform | both | pipe connection thru Transform and back to connection. if `jsonify` is true then the Transform is in the middle: `conn -> json.in -> transform -> json.out -> conn`
-[noRelisten](https://github.com/elidoran/node-cio/tree/master/relistener.coffee)  | bool | server | server socket gets an error listener for EADDRINUSE which will retry three times to `listen()` before exiting. Set this to `true` to turn that off
-[retryDelay](https://github.com/elidoran/node-cio/tree/master/relistener.coffee)  | int  |  server | Defaults to 3 second delay before retrying `listen()`
-[maxRetries](https://github.com/elidoran/node-cio/tree/master/relistener.coffee)  | int  |  server | Defaults to 3 tries before quitting
-[requestCert](https://github.com/elidoran/node-cio/tree/master/authenticate-client.coffee)  | bool | server | will trigger using `tls` instead of `net`. Used for server only. Adds a listener which will get client name and check if they're allowed. Must specify `isClientAllowed` function. May specify `rejectClient` function. Default emits an error event with a message including the name of client rejected.
+[multiplex](https://github.com/elidoran/node-cio/blob/master/lib/multiplex.coffee)   | bool   | both | use `mux-demux` for multiplexing connection
+[eventor](https://github.com/elidoran/node-cio/blob/master/lib/eventor.coffee)     | bool   | both | use `duplex-emitter`. if `multiplex` is true, create 'events' stream
+[jsonify](https://github.com/elidoran/node-cio/blob/master/lib/jsonify.coffee)     | bool   | both | run connection thru `json-duplex-stream` for in+out
+[transform](https://github.com/elidoran/node-cio/blob/master/lib/transformer.coffee)   | Transform | both | pipe connection thru Transform and back to connection. if `jsonify` is true then the Transform is in the middle: `conn -> json.in -> transform -> json.out -> conn`
+[noRelisten](https://github.com/elidoran/node-cio/blob/master/lib/relistener.coffee)  | bool | server | server socket gets an error listener for EADDRINUSE which will retry three times to `listen()` before exiting. Set this to `true` to turn that off
+[retryDelay](https://github.com/elidoran/node-cio/blob/master/lib/relistener.coffee)  | int  |  server | Defaults to 3 second delay before retrying `listen()`
+[maxRetries](https://github.com/elidoran/node-cio/blob/master/lib/relistener.coffee)  | int  |  server | Defaults to 3 tries before quitting
+[requestCert](https://github.com/elidoran/node-cio/blob/master/lib/authenticate-client.coffee)  | bool | server | will trigger using `tls` instead of `net`. Used for server only. Adds a listener which will get client name and check if they're allowed. Must specify `isClientAllowed` function. May specify `rejectClient` function. Default emits an error event with a message including the name of client rejected.
 [rejectUnauthorized](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback) | bool | both | requires proper certificates
 [key](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback) or private | file path or buffer | both | private key for TLS
 [cert](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback) or public | file path or buffer | both | public key for TLS
 [ca](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback) or root | file path or buffer | both | ca/root key
-[isClientAllowed](https://github.com/elidoran/node-cio/tree/master/authenticate-client.coffee) | Function | server | Receives the `client name` for the certificate. Returning false will cause the client connection to be rejected (closed).
-[rejectClient](https://github.com/elidoran/node-cio/tree/master/authenticate-client.coffee) | Function | server | When `isClientAllowed` returns false this function is called with client name and socket. When not specified and `isClientAllowed` returns false then an 'error' event is emitted (`'Client Rejected: ' + clientName`).
+[isClientAllowed](https://github.com/elidoran/node-cio/blob/master/lib/authenticate-client.coffee) | Function | server | Receives the `client name` for the certificate. Returning false will cause the client connection to be rejected (closed).
+[rejectClient](https://github.com/elidoran/node-cio/blob/master/lib/authenticate-client.coffee) | Function | server | When `isClientAllowed` returns false this function is called with client name and socket. When not specified and `isClientAllowed` returns false then an 'error' event is emitted (`'Client Rejected: ' + clientName`).
 reconnect | bool | client | use `reconnect-net` to handle reconnecting. **not yet implemented**
 
 I will eventually change the 'bool' types to allow objects so individual configurations can be provided for the listeners.

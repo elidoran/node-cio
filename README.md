@@ -93,7 +93,7 @@ server = cio.server(options);
 
 ### Usage: Client/Server Transformer
 
-Uses a transform to process input from the server and send results back to the server.
+Uses a transform to process input from the socket and send results back to the socket.
 
 ```javascript
 var transform = getSomeTransform();
@@ -123,7 +123,7 @@ var clientOptions = {
 client = cio.client(options);
 
 // the result is a client socket created by `net.connect()`
-// when it connects it will do create a `json-duplex-stream` and do:
+// when it connects it will create a `json-duplex-stream` and do:
 // client.pipe(json.in) and json.out.pipe(client)
 // it's up to you to handle the middle like:
 var transform = getSomeTransform();
@@ -170,6 +170,8 @@ Each socket's `mux-demux` instance is set on it as property `mx`.
 After the socket connects and the `mx` is created a 'mux' event is emitted on the socket like:
 `socket.emit('mux', mx, socket)`.
 
+Also creates an object to hold streams:  `socket.mxstreams`.
+
 ```javascript
 
 var clientOptions = { multiplex: true };
@@ -184,7 +186,8 @@ client = cio.client(options);
 // so, you can:
 client.on('mux', function(mx, client) {
   someStream = mx.createStream('someName');
-  // do something with it.
+  // then do something with the stream...
+  // or use other `mux-demux` instance functions...
   writeStream = mx.createWriteStream('someName');
   // and whatever else you'd like to use the mux-demux for
 });
@@ -195,6 +198,8 @@ client.on('mux', function(mx, client) {
 ### Usage: Event Stream and Multiplex Client/Server
 
 This does the same as above in 'Multiplex Client/Server' and then creates a stream in the `mux-demux` instance named 'events' and wraps that with a `duplex-emitter` as 'Event Stream Client/Server' above.
+
+The 'events' stream is available at `socket.mxstreams.events` and `socket.eventor`. It will be automatically deleted when its 'close' event is emitted.
 
 ```javascript
 
@@ -236,24 +241,25 @@ The rest are shared by both.
 
 All defaults are *false* or *undefined*.
 
-Name        | type   | Purpose | Description
+Name        | type   | Client/Server | Description
 ----:       | :---:  | :------: | :-------
 [multiplex](https://github.com/elidoran/node-cio/tree/master/lib/multiplex.coffee)   | bool   | both | use `mux-demux` for multiplexing connection
-eventor     | bool   | both | use `duplex-emitter`. if `multiplex` is true, create 'events' stream
-jsonify     | bool   | both | run connection thru `json-duplex-stream` for in+out
-transform   | Transform | both | pipe connection thru Transform and back to connection. if `jsonify` is true then the Transform is in the middle: `conn -> json.in -> transform -> json.out -> conn`
-noRelisten  | bool | server | server socket gets an error listener for EADDRINUSE which will retry three times to `listen()` before exiting. Set this to `true` to turn that off
-retryDelay  | int  |  server | Defaults to 3 second delay before retrying `listen()`
-maxRetries  | int  |  server | Defaults to 3 tries before quitting
-requestCert  | bool | server | will trigger using `tls` instead of `net`. Used for server only. Adds a listener which will get client name and check if they're allowed. Must specify `isClientAllowed` function. May specify `rejectClient`
-rejectUnauthorized | bool | both | requires proper certificates
-key or private | file path or buffer | both | private key for TLS
-cert or public | file path or buffer | both | public key for TLS
-ca or root | file path or buffer | both | ca/root key
-isClientAllowed | Function | server | Receives the `client name` for the certificate.
-rejectClient | Function | server | When `isClientAllowed` returns false this function is called with client name and socket. When not specified and `isClientAllowed` returns false then an 'error' event is emitted (`'Client Rejected: ' + clientName`).
+[eventor](https://github.com/elidoran/node-cio/tree/master/eventor.coffee)     | bool   | both | use `duplex-emitter`. if `multiplex` is true, create 'events' stream
+[jsonify](https://github.com/elidoran/node-cio/tree/master/jsonify.coffee)     | bool   | both | run connection thru `json-duplex-stream` for in+out
+[transform](https://github.com/elidoran/node-cio/tree/master/transformer.coffee)   | Transform | both | pipe connection thru Transform and back to connection. if `jsonify` is true then the Transform is in the middle: `conn -> json.in -> transform -> json.out -> conn`
+[noRelisten](https://github.com/elidoran/node-cio/tree/master/relistener.coffee)  | bool | server | server socket gets an error listener for EADDRINUSE which will retry three times to `listen()` before exiting. Set this to `true` to turn that off
+[retryDelay](https://github.com/elidoran/node-cio/tree/master/relistener.coffee)  | int  |  server | Defaults to 3 second delay before retrying `listen()`
+[maxRetries](https://github.com/elidoran/node-cio/tree/master/relistener.coffee)  | int  |  server | Defaults to 3 tries before quitting
+[requestCert](https://github.com/elidoran/node-cio/tree/master/authenticate-client.coffee)  | bool | server | will trigger using `tls` instead of `net`. Used for server only. Adds a listener which will get client name and check if they're allowed. Must specify `isClientAllowed` function. May specify `rejectClient` function. Default emits an error event with a message including the name of client rejected.
+[rejectUnauthorized](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback) | bool | both | requires proper certificates
+[key](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback) or private | file path or buffer | both | private key for TLS
+[cert](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback) or public | file path or buffer | both | public key for TLS
+[ca](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback) or root | file path or buffer | both | ca/root key
+[isClientAllowed](https://github.com/elidoran/node-cio/tree/master/authenticate-client.coffee) | Function | server | Receives the `client name` for the certificate. Returning false will cause the client connection to be rejected (closed).
+[rejectClient](https://github.com/elidoran/node-cio/tree/master/authenticate-client.coffee) | Function | server | When `isClientAllowed` returns false this function is called with client name and socket. When not specified and `isClientAllowed` returns false then an 'error' event is emitted (`'Client Rejected: ' + clientName`).
 reconnect | bool | client | use `reconnect-net` to handle reconnecting. **not yet implemented**
 
+I will eventually change the 'bool' types to allow objects so individual configurations can be provided for the listeners.
 
 ## Events
 

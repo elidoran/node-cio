@@ -5,7 +5,7 @@ module.exports = (options) ->
     # NOTE:
     #  net.Server's 'connection' event provides the new socket to the listener
     #  net.Socket's 'connect' event's `this` *is* the socket
-    socket ?= this 
+    socket ?= this
 
     # if transform must be built, then build it...
     transform =

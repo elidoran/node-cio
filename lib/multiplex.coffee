@@ -5,6 +5,10 @@ module.exports = (options) ->
   # build the listener function and return it
   # usable for: 'connect', 'connection', and 'secureConnection' events
   (socket) ->
+    # NOTE:
+    #  net.Server's 'connection' event provides the new socket to the listener
+    #  net.Socket's 'connect' event's `this` *is* the socket
+    socket ?= this
 
     # create a multiplexor for this connection with mux-demux
     mx = mux()

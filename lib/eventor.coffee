@@ -6,6 +6,10 @@ module.exports = (options) ->
   # usable for: 'connect', 'connection', and 'secureConnection' events
   # usable for both multiplexed and single streams
   (socket) ->
+    # NOTE:
+    #  net.Server's 'connection' event provides the new socket to the listener
+    #  net.Socket's 'connect' event's `this` *is* the socket
+    socket ?= this
 
     # create an eventor for this connection with 'duplex-emitter'
     # if they're using a multiplexor then create the stream in that instead

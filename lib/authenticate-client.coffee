@@ -6,6 +6,10 @@ module.exports = (options) ->
   isClientAllowed = options.isClientAllowed ? -> true
 
   (socket) ->
+    # NOTE:
+    #  net.Server's 'connection' event provides the new socket to the listener
+    #  net.Socket's 'connect' event's `this` *is* the socket
+    socket ?= this 
 
     # let's get the client name to check
     peer = socket.getPeerCertificate()

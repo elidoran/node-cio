@@ -7,18 +7,15 @@ buildTransformerListener = require '../../lib/transformer'
 # no builder options yet...
 cio = buildCio()
 
-# use cio to make server transformer ...
-# use cio to make client transformer ...
-# ensure piping was done...
-# then close out
-
-buildTransform = ->
+buildTransform = (name) ->
   transform =
-    pipe: (socket) -> transform.pipedTo = socket
-
+    name: name
+    pipe: (socket) ->
+      transform.pipedTo = socket
     on: ->
     once: ->
-    emit: (event) -> if event is 'pipe' then transform.pipedFrom = arguments[1]
+    emit: (event,arg2) ->
+      if event is 'pipe' then transform.pipedFrom = arg2
     end: ->
 
 describe 'test transformer', ->
@@ -99,30 +96,37 @@ describe 'test transformer', ->
   describe 'with client and server', ->
 
     # make two fake transforms which record what pipes to them and what they pipe to
-    serverTransform = buildTransform()
-    clientTransform  = buildTransform()
+    serverTransform = buildTransform 'server'
+    clientTransform  = buildTransform 'client'
 
     # remember these for assertions
     client = null
     serverConnection = null
+    listening = false
 
     # use `cio` to create a server with a tranform (and an arbitrary port)
-    server = cio.server transform:serverTransform, port:23456
-
-    # remember the server's connection to the client
-    server.on 'connection', (connection) -> serverConnection = connection
+    server = cio.server
+      transform: serverTransform
+      port     : 23456
+      onConnect: (connection) ->
+        serverConnection = connection
+        serverConnection.on 'end', -> server.close()
 
     # once the server is listening do the client stuffs
     server.on 'listening', ->
+      listening = true
 
       # create a client via `cio` with its transform and the same port as the server
-      client = cio.client transform:clientTransform, port:server.address().port
+      client = cio.client
+        transform: clientTransform
+        port     : server.address().port
+        onConnect: -> client.end()
 
-      # when it connects, go ahead and end :)
-      client.on 'connect', -> client.end()
+    before 'wait for server to listen', (done) -> server.listen done
 
-      # and we're then done with the server too
-      server.close()
+    before 'wait for server to close', (done) -> server.on 'close', done
+
+    it 'should listen', -> assert.equal listening, true
 
     # check to ensure this happened: socket.pipe(transform).pipe(socket)
     it 'should loop server\'s connection socket thru transform', ->
@@ -132,6 +136,5 @@ describe 'test transformer', ->
 
     # check to ensure this happened: socket.pipe(transform).pipe(socket)
     it 'should loop client socket thru transform', ->
-
       assert.equal clientTransform.pipedFrom, client
       assert.equal clientTransform.pipedTo, client

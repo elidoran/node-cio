@@ -1,81 +1,79 @@
-
+# use these for making the connections
 net = require 'net'
 tls = require 'tls'
-# TODO:
-# reconnect = require 'reconnect-net'
 
-# i dislike having to read all these when they may not be used even once...
-# but, it's expected to require early on to discover if they're missing and
-# so they're near the top (easy to find)
-addListeners = require './add-listeners'
-readCerts    = require './read-certs'
-relistener = require './relistener'
+# use this to read certificate files
+readCerts = require './read-certs'
+
+# provides the `cio.use()` function to add plugins
+getPlugin = require 'get-plugin'
+
+# reads the options' `plugins` value and loads them
+buildPluginChain = require './plugin-chain'
 
 module.exports = (builderOptions) ->
 
-  # TODO: builderOptions...
+  # check for `plugins`, if there are some, then 'require' them and load them
+  # in for use.
+  chain = buildPluginChain builderOptions
 
   # build socket builder function
-  builder = (isServer, options) ->
+  builder = (options, isServer) ->
 
     # if there are cert file paths specified, read the files now
     readCerts options
 
-    # TODO: when `defaultOptions` actually has some values, we'll want to
-    # combine options and defaultOptions now...
-
     # 1. secure if some options related to a secure connection are specified
+    # TODO: should probably ensure they specify key/cert otherwise it won't work.
+    # NOTE: I allow aliases private/public.
     if options.rejectUnauthorized or options.key? or options.private? or options.requestCert
-      secure = true
+      isSecure = true
       # convert aliases
       if options.private? then options.key = options.private
       if options.public? then options.cert = options.public
       if options.root? then options.ca = options.root
 
 
-    # 2. choose creator and use its function to build the socket
-    socket = do (isServer, secure) ->
-      functionName = if isServer then 'createServer' else 'connect'
-      creator = if secure then tls else net
-      # TODO: use `reconnect-net` for client
-      creator[functionName] options
+    # 2. build the socket based on `isServer` and `isSecure`
+    socket =
+      if isSecure
+        if isServer then tls.createServer options else tls.connect options
+      else
+        if isServer then net.createServer options else net.connect options
 
-    # always add our own listener first so we can do some work for them
-    # TODO: unless directed not to...
+    # 3. process through build chain adding listeners and configuring
+    result = chain.run
+      context: # provide the necessary stuff to each function call
+        socket  : socket
+        isServer: isServer
+        isSecure: isSecure
+        options : options
 
-    # 3. decide which connection listeners to add
-    whichEvents = []
-    # it's complicated for a server because it can be secured or not...
-    # and, it's possible to listen to *both* unsecured and secured
-    if isServer
-      # if secure, then we always add to 'secureConnection'
-      if secure then whichEvents.push 'secureConnection'
-      # if not secure then we always add to 'connection'
-      # also, if it's secure, but they specify an `onConnect`, then we do 'connection'
-      if not secure or options.onConnect? then whichEvents.push 'connection'
+    # if the chain failed then return an error back along with info
+    if result.error? then return error:'Failed to configure socket', reason:result
 
-    # client is simple... it's always 'connect'
-    else whichEvents.push 'connect'
+    # 4. add their listeners, if they exist
+    if options.onSecureConnect?
+      socket.on 'secureConnection', options.onSecureConnect
 
-    # 4. add listeners
-    addListeners options, socket, whichEvents
-
-    # 5. add their listeners, if they exist
-    # TODO: wrap this first one with `if isServer` ?
-    if options.onSecureConnect? then socket.on 'secureConnection', options.onSecureConnect
     if options.onConnect?
       socket.on (if isServer then 'connection' else 'connect'), options.onConnect
 
-    # 6. unless 'address-in-use' helper is specified to *not* be used, then add it
-    # for 'listening' to retry listen() the config'd number of times with config'd delay
-    if isServer and not options.noRelisten then relistener server:socket
-
-    # 7. all done
+    # 5. all done
     return socket
 
+  # our module's API is the two creation functions and an "add a plugin" function
+  # due to the considerable similarity to creating a server socket and a
+  # client socket it uses the same function with an `isServer` boolean value.
   return fns =
-    # could use bind() here, but, I find it harder to read...
-    # client: builder.bind builder, false # isServer = false
-    # server: builder.bind builder, true  # isServer = true
-    client: (options) -> builder false, options # isServer = false
-    server: (options) -> builder true, options  # isServer = true
+    client: builder                             # isServer = false
+    server: (options) -> builder options, true  # isServer = true
+    use: (plugin, options) ->
+      # get the plugin instance function
+      plugin = getPlugin plugin, options
+
+      # if we received an error back, then return it
+      if plugin.error? then return plugin
+
+      # add the plugin to our chain
+      chain.add plugin

@@ -1,14 +1,51 @@
-# cio
+# @cio/builder (the 'core' or 'builder' is module `cio`, then `@cio/blah` is for other plugins/listeners)
 [![Build Status](https://travis-ci.org/elidoran/node-cio.svg?branch=master)](https://travis-ci.org/elidoran/node-cio)
 [![Dependency Status](https://gemnasium.com/elidoran/node-cio.png)](https://gemnasium.com/elidoran/node-cio)
 [![npm version](https://badge.fury.io/js/cio.svg)](http://badge.fury.io/js/cio)
+
+
+```coffeescript
+cio = require('cio') plugins: [
+  '@cio/eaddrinuse'          # recalls listen() when address is in use
+  '@cio/read-certs'          # reads certs into memory from paths
+  '@cio/authenticate-client' # adds isClientAllowed and rejectClient handling
+  '@cio/jsonify'             # pipes connection to jsonify parser/stringify
+  '@cio/transformer'         # pipes connection thru transform(s)
+  # could add a whitelist/blacklist handler which uses a LevelDB to store the info
+  # could add a monitor which tracks what's connecting to a server, or how
+  # often a disconnect occurs for a client, or how much data is passing thru
+  # each server's client, or a client...
+]
+
+# could alternatively do:
+cio.use '@cio/name' # which will still do the require and add it to the chain
+#  OR:
+cio.use require '@cio/name'
+#  OR:
+cio.use require('@cio/name')(someOptions)
+
+# the above builds the cio instance, requires each of those plugin names,
+# adds them to the chain of builders to process when creating a new connection,
+# and returns the cio instance ready to go.
+
+# make some aggregator modules for common use.
+# such as: '@cio/secured'
+#  1. tls cert reading stuff
+#  2. client authentication via whitelist/blacklist stuffs
+#  3. ... is that all? hmm.
+#
+# or, one for monitoring performance, or throughput, or something like that.
+```
 
 Conveniently create net/tls server/client sockets with helpful listeners providing common functionality.
 
 This will do all the work for you to create client or server sockets setup for:
 
 1. transform processing input and sending output
-2. JSON stream protocol with `json-duplex-stream`
+2. JSON stream protocol with:
+    a. `json-duplex-stream`
+    b. `jsonify`
+    c. `JSON.parse` and `JSON.stringify`
 3. combination of both JSON stream protocol and a transform
 4. an event stream with `duplex-emitter`
 5. a multiplexed stream using `mux-demux`
@@ -16,6 +53,26 @@ This will do all the work for you to create client or server sockets setup for:
 7. a server connection which automatically recalls `listen()` when the `EADDRINUSE` error occurs
 8. secure connections using `tls` module and private/public/root certificates
 9. authenticate both clients and servers and perform whitelist/blacklist of clients
+
+Plugins:
+
+1. transform(s), allow an array, pipe thru'em
+2. json via:
+    a. standard JSON
+    b. jsonify
+    c. standard parse and safe-stringify
+    d. json-duplex-stream
+    e. Oboe.js
+3. mux-demux
+4. duplex-emitter
+5. relistener
+6. tls cert's reading
+7. client whitelist/blacklist
+8. Google's ProtoBuf
+9. Msgpack
+10. PSON
+11. Cable
+
 
 For example, if your client connection can be handled by a Transform instance then it's as simple as:
 
@@ -299,6 +356,22 @@ I will eventually change the 'bool' types to allow objects so individual configu
 1. 'mux' - When `multiplex` is on, 'mux' is emitted on a new socket after the 'on connect' listeners have run. Use this to configure the mux instance. For example, adding more streams to it and associated handlers.
 2. 'eventor' - When `eventor` is on, 'eventor' is emitted on a new socket after the 'on connect' listeners have run. Use this to setup event handlers on the socket specific `eventor`.
 3. 'jsonify' - When 'jsonify' is on, 'jsonify' is emitted when the `json-duplex-stream` has been setup with the socket piping to its input and its output piping to the socket. Use this to specify what should happen in the middle, after the jsonified input and how it gets back to the jsonify output.
+
+## Why?
+
+While reading various "how to" articles and instructional books I see a lot of easy to use patterns. I want to make those very easy to use by providing the boilerplate involved.
+
+I hope to build up a library of addons in scope [@cio](https://www.npmjs.com/~cio) for working with lots of helpful modules and beneficial patterns.
+
+Please feel free to suggest modules, offer PR's, and offer to publish an addon to the [@cio](https://www.npmjs.com/~cio) scope.
+
+## Contributions
+
+Please suggest new addon modules for the [@cio](https://www.npmjs.com/~cio) scope. If you'd like to publish a module to the scope, contact me and I'll make it available to you.
+
+I'm not certain yet, but, I'm thinking a good pattern for addons which relate to a specific module, such as my use of `duplex-emitter`, is to use their name. So, for my use of `duplex-emitter` I made `@cio/duplex-emitter`.
+
+Feel free to suggest an alternative or a unique name.
 
 
 ## MIT License

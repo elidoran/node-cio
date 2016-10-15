@@ -47,16 +47,16 @@ module.exports = (options) ->
           else options
 
       # otherwise we didn't get a value value so return an error
-      else return error:"Plugin #{index} is an invalid type:",typeof(plugin)
+      else return error:"Plugin #{index} is an invalid type:" + typeof(plugin)
 
-      # now get the plugin with the value and the options
-      plugin = getPlugin plugin, pluginOptions
+    # now get the plugin with the value and the options
+    plugin = getPlugin plugin, pluginOptions
 
-      # if it returned an error, then return that now
-      if plugin.error? then return plugin
+    # if it returned an error, then return that now
+    if plugin.error? then return plugin
 
-      # otherwise, add the plugin to our array
-      plugins.push plugin
+    # otherwise, add the plugin to our array
+    plugins.push plugin
 
   # build the chain with the plugins and return it
   buildChain plugins

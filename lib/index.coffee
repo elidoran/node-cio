@@ -6,9 +6,9 @@ tls = require 'tls'
 readCerts = require './read-certs'
 
 # provides the `cio.use()` function to add plugins
-getPlugin = require 'get-plugin'
+getPlugin = require './get-plugin'
 
-# reads the options' `plugins` value and loads them
+# reads the options' `plugins` value and loads them into a chain
 buildPluginChain = require './plugin-chain'
 
 module.exports = (builderOptions) ->

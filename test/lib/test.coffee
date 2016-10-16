@@ -117,6 +117,66 @@ describe 'test cio', ->
       it 'should close', -> assert.equal closed, true
 
 
+
+    describe 'with security cert property aliases', ->
+
+      certs = {}
+
+      before 'generate certs', (done) ->
+        # if certs already exist, we're done
+        if fs.existsSync helperFile 'ca.cert.pem' then return done()
+
+        # otherwise, run the script to generate them...
+        # NOTE: expects openssl .. so, nix environments...?
+        require(helperFile 'genscripts.js')(done)
+
+      # remember these for assertions
+      client    = null
+      received  = null
+      listening = false
+      connected = false
+      closed    = false
+
+      # use `cio` to create a server with a tranform (and an arbitrary port)
+      server = cio.server
+        private: helperFile 'server.private.pem'
+        public : helperFile 'server.cert.pem'
+        root   : helperFile 'ca.cert.pem'
+        onSecureConnect: (connection) ->
+          serverConnection = connection
+          serverConnection.on 'data', (data) -> received = data.toString 'utf8'
+          serverConnection.on 'end', -> server.close()
+
+      # once the server is listening do the client stuffs
+      server.on 'listening', ->
+        listening = true
+
+        # create a client via `cio` with its transform and the same port as the server
+        client = cio.client
+          port: server.address().port
+          key : helperFile 'client.private.pem'
+          cert: helperFile 'client.cert.pem'
+          ca  : helperFile 'ca.cert.pem'
+          onConnect: ->
+            connected = true
+            client.end 'done', 'utf8'
+
+      before 'wait for server to listen', (done) -> server.listen done
+
+      before 'wait for server to close', (done) ->
+        server.on 'close', ->
+          closed = true
+          done()
+
+      it 'should listen', -> assert.equal listening, true
+
+      it 'should connect', -> assert.equal connected, true
+
+      it 'should receive', -> assert.equal received, 'done'
+
+      it 'should close', -> assert.equal closed, true
+
+
     describe 'with address in use', ->
 
       describe 'and default relisten()', ->

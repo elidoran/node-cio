@@ -10,8 +10,6 @@ cio = buildCio()
 # help reference helper files
 helperFile = (name) -> corepath.resolve __dirname, '..', 'helpers', name
 
-SERVER_PORT = 23456
-
 describe 'test cio', ->
 
   describe 'client and server', ->
@@ -20,35 +18,48 @@ describe 'test cio', ->
 
       # remember these for assertions
       client = null
+      server = null
       received = null
       listening = false
       connected = false
       closed = false
 
-      # use `cio` to create a server with a tranform (and an arbitrary port)
-      server = cio.server
-        onConnect: (connection) ->
-          serverConnection = connection
-          serverConnection.on 'data', (data) -> received = data.toString 'utf8'
-          serverConnection.on 'end', -> server.close()
+      before 'build server', ->
 
-      # once the server is listening do the client stuffs
-      server.on 'listening', ->
-        listening = true
+        # use `cio` to create a server with a tranform (and an arbitrary port)
+        server = cio.server
+          retryDelay: 100
+          onConnect: (connection) ->
+            serverConnection = connection
+            serverConnection.on 'data', (data) ->
+              received = data.toString 'utf8'
+            serverConnection.on 'end', ->
+              server.close()
 
-        # create a client via `cio` with its transform and the same port as the server
-        client = cio.client
-          port     : server.address().port
-          onConnect: ->
-            connected = true
-            client.end 'done', 'utf8'
+        server.on 'error', (error) -> console.log 'Server error:',error
 
-      before 'wait for server to listen', (done) -> server.listen done
+        # once the server is listening do the client stuffs
+        server.on 'listening', ->
+          listening = true
+
+          # create a client via `cio` with its transform and the same port as the server
+          client = cio.client
+            port     : server.address().port
+            host     : 'localhost'
+            onConnect: ->
+              connected = true
+              client.end 'done', 'utf8'
+
+          client.on 'error', (error) -> console.log 'client error:',error
+
+        server.on 'close', -> closed = true
+
+      before 'wait for server to listen', (done) ->
+        # server.listen done
+        server.listen 1357, 'localhost', done
 
       before 'wait for server to close', (done) ->
-        server.on 'close', ->
-          closed = true
-          done()
+        server.on 'close', done
 
       it 'should listen', -> assert.equal listening, true
 
@@ -105,7 +116,8 @@ describe 'test cio', ->
                 connected = true
                 client.end 'done', 'utf8'
 
-        before 'wait for server to listen', (done) -> server.listen done
+        before 'wait for server to listen', (done) ->
+          server.listen 2468, 'localhost', done
 
         before 'wait for server to close', (done) ->
           server.on 'close', ->
@@ -157,7 +169,8 @@ describe 'test cio', ->
                 connected = true
                 client.end 'done', 'utf8'
 
-        before 'wait for server to listen', (done) -> server.listen done
+        before 'wait for server to listen', (done) ->
+          server.listen 3579, 'localhost', done
 
         before 'wait for server to close', (done) ->
           server.on 'close', ->
@@ -177,7 +190,7 @@ describe 'test cio', ->
 
       describe 'and default relisten()', ->
 
-        serverPort = SERVER_PORT
+        serverPort = 4680
 
         # remember these for assertions
         client = null
@@ -189,7 +202,7 @@ describe 'test cio', ->
 
         # let's create another server which uses the same port to cause EADDRINUSE
         otherServer = cio.server()
-        otherServer.listen serverPort
+        otherServer.listen serverPort, 'localhost'
 
         # use `cio` to create a server with a tranform (and an arbitrary port)
         server = cio.server
@@ -197,7 +210,7 @@ describe 'test cio', ->
             serverConnection = connection
             serverConnection.on 'data', (data) -> received = data.toString 'utf8'
             serverConnection.on 'end', -> server.close()
-          retryDelay: 300
+          retryDelay: 100
           maxRetries: 5
           # relisten: ->
           #   relistened++
@@ -221,8 +234,8 @@ describe 'test cio', ->
 
         before 'wait for server to listen', (done) ->
           # call done() when it successfully listens...
-          server.listen serverPort, ->
-            if server.listening then done()
+          server.listen serverPort, 'localhost', ->
+            if server.listening is true then done()
 
         before 'wait for server to close', (done) ->
           server.on 'close', ->
@@ -240,7 +253,7 @@ describe 'test cio', ->
 
       describe 'and specified relisten option', ->
 
-        serverPort = 12345
+        serverPort = 6820
 
         # remember these for assertions
         client = null
@@ -252,7 +265,7 @@ describe 'test cio', ->
 
         # let's create another server which uses the same port to cause EADDRINUSE
         otherServer = cio.server()
-        otherServer.listen serverPort
+        otherServer.listen serverPort, 'localhost'
 
         # use `cio` to create a server with a tranform (and an arbitrary port)
         server = cio.server
@@ -260,12 +273,12 @@ describe 'test cio', ->
             serverConnection = connection
             serverConnection.on 'data', (data) -> received = data.toString 'utf8'
             serverConnection.on 'end', -> server.close()
-          retryDelay: 300
+          retryDelay: 100
           maxRetries: 5
           relisten: ->
             relistened++
             if relistened > 3 then otherServer.close()
-            server.listen serverPort
+            server.listen serverPort, 'localhost'
 
         # once the server is listening do the client stuffs
         server.on 'listening', ->
@@ -280,7 +293,7 @@ describe 'test cio', ->
 
         before 'wait for server to listen', (done) ->
           # call done() when it successfully listens...
-          server.listen serverPort, ->
+          server.listen serverPort, 'localhost', ->
             if server.listening then done()
 
         before 'wait for server to close', (done) ->

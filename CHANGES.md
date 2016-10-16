@@ -1,4 +1,4 @@
 
-0.1.0 - Unreleased
+0.2.0 - Released 2016/10/16
 
-1. initial working version **without** tests
+1. initial working version with tests

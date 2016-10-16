@@ -220,7 +220,7 @@ There are advanced abilities for your plugin function to control its execution b
 
 All defaults are *false* or *undefined* unless stated otherwise.
 
-Name        |   Type       | Client/Server | Description
+Name        |   Type     . | Client/Server | Description
 ----:       | :----------: | :-----------: | :-------
 [relistener](https://github.com/elidoran/node-cio/blob/master/lib/index.coffee)  | bool | server | server socket gets an error listener for EADDRINUSE which will retry three times to `listen()` before exiting. Set this to `false` to turn that off
 [retryDelay](https://github.com/elidoran/node-cio/blob/master/lib/relistener.coffee)  | int  |  server | Defaults to 3 second delay before retrying `listen()`

@@ -1,3 +1,7 @@
+# ignore cert files
+*.pem
+*.srl
+
 # Logs
 logs
 *.log

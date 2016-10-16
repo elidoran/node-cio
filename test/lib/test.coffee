@@ -7,6 +7,7 @@ buildCio = require '../../lib'
 # no options yet...
 cio = buildCio()
 
+# help reference helper files
 helperFile = (name) -> corepath.resolve __dirname, '..', 'helpers', name
 
 SERVER_PORT = 23456
@@ -60,121 +61,116 @@ describe 'test cio', ->
 
     describe 'with security certs', ->
 
-      certs = {}
-
-      before 'generate certs', (done) ->
+      before 'must have certs', (done) ->
+        # we'll need security certificate files.
         # if certs already exist, we're done
         if fs.existsSync helperFile 'ca.cert.pem' then return done()
 
-        # otherwise, run the script to generate them...
         # NOTE: expects openssl .. so, nix environments...?
         require(helperFile 'genscripts.js')(done)
 
-      # remember these for assertions
-      client    = null
-      received  = null
-      listening = false
-      connected = false
-      closed    = false
+      describe 'in standard property names', ->
 
-      # use `cio` to create a server with a tranform (and an arbitrary port)
-      server = cio.server
-        key : helperFile 'server.private.pem'
-        cert: helperFile 'server.cert.pem'
-        ca  : helperFile 'ca.cert.pem'
-        onSecureConnect: (connection) ->
-          serverConnection = connection
-          serverConnection.on 'data', (data) -> received = data.toString 'utf8'
-          serverConnection.on 'end', -> server.close()
+        # remember these for assertions
+        client    = null
+        server    = null
+        received  = null
+        listening = false
+        connected = false
+        closed    = false
 
-      # once the server is listening do the client stuffs
-      server.on 'listening', ->
-        listening = true
+        before 'build server', ->
 
-        # create a client via `cio` with its transform and the same port as the server
-        client = cio.client
-          port: server.address().port
-          key : helperFile 'client.private.pem'
-          cert: helperFile 'client.cert.pem'
-          ca  : helperFile 'ca.cert.pem'
-          onConnect: ->
-            connected = true
-            client.end 'done', 'utf8'
+          # use `cio` to create a server with a tranform (and an arbitrary port)
+          server = cio.server
+            key : helperFile 'server.private.pem'
+            cert: helperFile 'server.cert.pem'
+            ca  : helperFile 'ca.cert.pem'
+            onSecureConnect: (connection) ->
+              serverConnection = connection
+              serverConnection.on 'data', (data) -> received = data.toString 'utf8'
+              serverConnection.on 'end', -> server.close()
 
-      before 'wait for server to listen', (done) -> server.listen done
+          # once the server is listening do the client stuffs
+          server.on 'listening', ->
+            listening = true
 
-      before 'wait for server to close', (done) ->
-        server.on 'close', ->
-          closed = true
-          done()
+            # create a client via `cio` with its transform and the same port as the server
+            client = cio.client
+              port: server.address().port
+              key : helperFile 'client.private.pem'
+              cert: helperFile 'client.cert.pem'
+              ca  : helperFile 'ca.cert.pem'
+              onConnect: ->
+                connected = true
+                client.end 'done', 'utf8'
 
-      it 'should listen', -> assert.equal listening, true
+        before 'wait for server to listen', (done) -> server.listen done
 
-      it 'should connect', -> assert.equal connected, true
+        before 'wait for server to close', (done) ->
+          server.on 'close', ->
+            closed = true
+            done()
 
-      it 'should receive', -> assert.equal received, 'done'
+        it 'should listen', -> assert.equal listening, true
 
-      it 'should close', -> assert.equal closed, true
+        it 'should connect', -> assert.equal connected, true
+
+        it 'should receive', -> assert.equal received, 'done'
+
+        it 'should close', -> assert.equal closed, true
 
 
+      describe 'in my property aliases', ->
 
-    describe 'with security cert property aliases', ->
+        # remember these for assertions
+        client    = null
+        server    = null
+        received  = null
+        listening = false
+        connected = false
+        closed    = false
 
-      certs = {}
+        before 'build server', ->
 
-      before 'generate certs', (done) ->
-        # if certs already exist, we're done
-        if fs.existsSync helperFile 'ca.cert.pem' then return done()
+          # use `cio` to create a server with a tranform (and an arbitrary port)
+          server = cio.server
+            private: helperFile 'server.private.pem'
+            public : helperFile 'server.cert.pem'
+            root   : helperFile 'ca.cert.pem'
+            onSecureConnect: (connection) ->
+              serverConnection = connection
+              serverConnection.on 'data', (data) -> received = data.toString 'utf8'
+              serverConnection.on 'end', -> server.close()
 
-        # otherwise, run the script to generate them...
-        # NOTE: expects openssl .. so, nix environments...?
-        require(helperFile 'genscripts.js')(done)
+          # once the server is listening do the client stuffs
+          server.on 'listening', ->
+            listening = true
 
-      # remember these for assertions
-      client    = null
-      received  = null
-      listening = false
-      connected = false
-      closed    = false
+            # create a client via `cio` with its transform and the same port as the server
+            client = cio.client
+              port: server.address().port
+              key : helperFile 'client.private.pem'
+              cert: helperFile 'client.cert.pem'
+              ca  : helperFile 'ca.cert.pem'
+              onConnect: ->
+                connected = true
+                client.end 'done', 'utf8'
 
-      # use `cio` to create a server with a tranform (and an arbitrary port)
-      server = cio.server
-        private: helperFile 'server.private.pem'
-        public : helperFile 'server.cert.pem'
-        root   : helperFile 'ca.cert.pem'
-        onSecureConnect: (connection) ->
-          serverConnection = connection
-          serverConnection.on 'data', (data) -> received = data.toString 'utf8'
-          serverConnection.on 'end', -> server.close()
+        before 'wait for server to listen', (done) -> server.listen done
 
-      # once the server is listening do the client stuffs
-      server.on 'listening', ->
-        listening = true
+        before 'wait for server to close', (done) ->
+          server.on 'close', ->
+            closed = true
+            done()
 
-        # create a client via `cio` with its transform and the same port as the server
-        client = cio.client
-          port: server.address().port
-          key : helperFile 'client.private.pem'
-          cert: helperFile 'client.cert.pem'
-          ca  : helperFile 'ca.cert.pem'
-          onConnect: ->
-            connected = true
-            client.end 'done', 'utf8'
+        it 'should listen', -> assert.equal listening, true
 
-      before 'wait for server to listen', (done) -> server.listen done
+        it 'should connect', -> assert.equal connected, true
 
-      before 'wait for server to close', (done) ->
-        server.on 'close', ->
-          closed = true
-          done()
+        it 'should receive', -> assert.equal received, 'done'
 
-      it 'should listen', -> assert.equal listening, true
-
-      it 'should connect', -> assert.equal connected, true
-
-      it 'should receive', -> assert.equal received, 'done'
-
-      it 'should close', -> assert.equal closed, true
+        it 'should close', -> assert.equal closed, true
 
 
     describe 'with address in use', ->

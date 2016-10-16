@@ -93,10 +93,13 @@ This is a convenience so you don't have to write the file reading part.
 ```javascript
 // this uses my preferred aliases. You can use the Node names: key, cert, ca.
 var clientOrServerOptions = {
+
   // example of specifying a path
   private: 'path/to/private/key/file'
+
   // example of getting the buffer yourself
   , public: getPublicCertAsBuffer()
+
   // example of having the buffer already and placing into an array
   , root: [rootCertBuffer]
 };
@@ -217,8 +220,8 @@ There are advanced abilities for your plugin function to control its execution b
 
 All defaults are *false* or *undefined* unless stated otherwise.
 
-Name        | type   | Client/Server | Description
-----:       | :---:  | :------: | :-------
+Name        |   Type       | Client/Server | Description
+----:       | :----------: | :-----------: | :-------
 [relistener](https://github.com/elidoran/node-cio/blob/master/lib/index.coffee)  | bool | server | server socket gets an error listener for EADDRINUSE which will retry three times to `listen()` before exiting. Set this to `false` to turn that off
 [retryDelay](https://github.com/elidoran/node-cio/blob/master/lib/relistener.coffee)  | int  |  server | Defaults to 3 second delay before retrying `listen()`
 [maxRetries](https://github.com/elidoran/node-cio/blob/master/lib/relistener.coffee)  | int  |  server | Defaults to 3 tries before quitting

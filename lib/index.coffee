@@ -14,6 +14,18 @@ getPlugin = require './get-plugin'
 # reads the options' `plugins` value and loads them into a chain
 buildPluginChain = require './plugin-chain'
 
+# help out client connect listeners by supplying `socket` as first arg.
+# return a function which passes `this` as the first arg cuz its the socket
+addSocketArg = (fn) -> -> fn this
+
+onConnectWrapper = (event, listener) ->
+  if event is 'connect' then listener = addSocketArg listener
+  this.originalOn event, listener
+
+onceConnectWrapper = (event, listener) ->
+  if event is 'connect' then listener = addSocketArg listener
+  this.originalOn event, listener
+
 module.exports = (builderOptions) ->
 
   # check for `plugins`, if there are some, then 'require' them and load them
@@ -71,6 +83,7 @@ module.exports = (builderOptions) ->
     if options.onConnect?
       socket.on (if isServer then 'connection' else 'connect'), options.onConnect
 
+    # 5. add 'relistener'
     # I'm choosing to keep the `relistener` ability in `cio` and adding it
     # unless specified *not* to. It's a simple helper for an annoying issue.
     if isServer and options.relistener isnt false
@@ -80,7 +93,17 @@ module.exports = (builderOptions) ->
         maxRetries: options.maxRetries
         relisten  : options.relisten
 
-    # 5. all done
+    # 6. help client connect listeners by providing socket as arg1
+    if not isServer
+      # hold onto original functions
+      socket.originalOn = socket.on
+      socket.originalOnce = socket.once
+
+      # new one wraps connect listeners so they have the socket as first arg
+      socket.on = onConnectWrapper
+      socket.once = onceConnectWrapper
+
+    # 7. all done
     return socket
 
   # our module's API is the two creation functions and an "add a plugin" function

@@ -5,25 +5,8 @@
 
 Conveniently create net/tls server/client sockets with helpful listeners providing common functionality.
 
-This will do all the work for you to create client or server sockets setup for:
+Accepts plugins which can affect each new connection.
 
-1. transform processing input and sending output
-2. JSON stream protocol with `json-duplex-stream`
-3. combination of both JSON stream protocol and a transform
-4. an event stream with `duplex-emitter`
-5. a multiplexed stream using `mux-demux`
-6. a multiplexed stream and create an `events` stream with `duplex-emitter`
-7. a server connection which automatically recalls `listen()` when the `EADDRINUSE` error occurs
-8. secure connections using `tls` module and private/public/root certificates
-9. authenticate both clients and servers and perform whitelist/blacklist of clients
-
-For example, if your client connection can be handled by a Transform instance then it's as simple as:
-
-```javascript
-cio.client({ transform: transformInstance })
-// OR: a builder function
-cio.client({ transform: transformBuilder })
-```
 
 ## Install
 
@@ -33,6 +16,12 @@ npm install cio --save
 
 TODO: Create Table of Contents
 
+Plugins:
+
+1. [transformer](https://github.com/elidoran/node-cio-transformer) uses Transform pipeline to handle input/output for connection
+2. [duplex-emitter](https://github.com/elidoran/node-cio-duplex-emitter) uses `duplex-emitter` module to create a two way remote event communication
+
+
 ## Usage
 
 ### Usage: Build module
@@ -41,28 +30,16 @@ The module accepts options to future proof it. This means the require call retur
 
 ```javascript
 // one thing at a time:
-var buildCio = require('cio')      // #1
+var buildCio = require('cio');      // #1
 
-var cio = buildCio(moduleOptions)  // #2
+var cio = buildCio(moduleOptions);  // #2
 
-var server = cio.server(options)   // #3
+var server = cio.server(options);   // #3
 
 // combine #1 and #2
-var cio = require('cio')()
+var cio = require('cio')();
 // and again with module options
-var cio = require('cio')(cioModuleOptions)
-```
-
-### Usage: Default Client
-
-```javascript
-var clientOptions = {
-  // use nothing
-};
-
-client = cio.client(options);
-
-// the result is a client socket created by `net.connect()`
+var cio = require('cio')(cioModuleOptions);
 ```
 
 ### Usage: Simple Client
@@ -71,154 +48,33 @@ client = cio.client(options);
 var clientOptions = {
   port: 12345
   , host: 'localhost'
+  , onConnect: onConnect
 };
 
-client = cio.client(options);
+var client = cio.client(clientOptions);
 
 // the result is a client socket created by:
-// `net.connect({port:12345, host:'localhost'})`
+// `net.connect({port: 12345, host:'localhost'}, onConnect)`
+
+function onConnect(client) {
+  // do something with `client` now that we're connected
+  client.end('blah');
+}
 ```
 
-### Usage: Simple Server
+### Usage: Default Server
 
 ```javascript
 var serverOptions = {
-  port: 12345
-  , host: 'localhost'
 };
 
-server = cio.server(options);
+var server = cio.server(options);
 
 // the result is a server socket created by:
-// `net.createServer({port:12345, host:'localhost'})`
-```
+// `net.createServer()`
 
-### Usage: Client/Server Transformer
-
-Uses a transform to process input from the socket and send results back to the socket.
-
-```javascript
-var transform = getSomeTransform();
-
-var clientOptions = { transform: transform };
-
-client = cio.client(options);
-
-// the result is a client socket created by `net.connect()`
-// when it connects it will do:
-//   client.pipe(transform).pipe(client)
-
-// Do the same with cio.server(...) for server side transformer setup
-```
-
-### Usage: JSON Stream Client/Server
-
-Uses `json-duplex-stream` to setup a JSON communication protocol.
-
-May combine with the 'Transform Client' above allowing your transform to read/write JSON objects.
-
-```javascript
-var clientOptions = {
-  jsonify: true
-};
-
-client = cio.client(options);
-
-// the result is a client socket created by `net.connect()`
-// when it connects it will create a `json-duplex-stream` and do:
-// client.pipe(json.in) and json.out.pipe(client)
-// it's up to you to handle the middle like:
-var transform = getSomeTransform();
-client.json.in.pipe(transform).pipe(client.json.out)
-
-// to do the above all in one, specify the transform as in 'Usage: Transform Client':
-var clientOptions = {
-  jsonify: true
-  , transform: transform
-};
-
-// Do the same with cio.server(...) for server side JSON stream setup
-```
-
-### Usage: Event Stream Client/Server
-
-Uses `duplex-emitter` to setup a two-way remote event communication.
-
-```javascript
-
-var clientOptions = { eventor: true };
-
-client = cio.client(options);
-
-// the result is a client socket created by `net.connect()`
-// when it connects it will do:
-// client.eventor = new DuplexEmitter(socket)
-// client.emit('eventor', eventor, client)
-// so, you can:
-client.on('eventor', function(eventor, client) {
-  eventor.on('some-event', someListener);
-  // and more...
-});
-
-// Do the same with cio.server(...) for server side transformer setup
-```
-
-### Usage: Multiplex Client/Server
-
-Uses `mux-demux` to allow many streams in one.
-
-Each socket's `mux-demux` instance is set on it as property `mx`.
-
-After the socket connects and the `mx` is created a 'mux' event is emitted on the socket like:
-`socket.emit('mux', mx, socket)`.
-
-Also creates an object to hold streams:  `socket.mxstreams`.
-
-```javascript
-
-var clientOptions = { multiplex: true };
-
-client = cio.client(options);
-
-// the result is a client socket created by `net.connect()`
-// when it connects it will do:
-// client.mx = mux();
-// client.pipe(mx).pipe(client);
-// client.emit('mux', mx, client)
-// so, you can:
-client.on('mux', function(mx, client) {
-  someStream = mx.createStream('someName');
-  // then do something with the stream...
-  // or use other `mux-demux` instance functions...
-  writeStream = mx.createWriteStream('someName');
-  // and whatever else you'd like to use the mux-demux for
-});
-
-// Do the same with cio.server(...) for server side transformer setup
-```
-
-### Usage: Event Stream and Multiplex Client/Server
-
-This does the same as above in 'Multiplex Client/Server' and then creates a stream in the `mux-demux` instance named 'events' and wraps that with a `duplex-emitter` as 'Event Stream Client/Server' above.
-
-The 'events' stream is available at `socket.mxstreams.events` and `socket.eventor`. It will be automatically deleted when its 'close' event is emitted.
-
-```javascript
-
-var clientOptions = {
-  multiplex:true
-  , eventor: true
-};
-
-client = cio.client(options);
-
-// the result is a combination of 'Event Stream' and 'Multiplex'. You can do
-// both.
-// The 'eventor' is wrapping a `mux-demux` instance's stream named 'events'
-client.on('eventor', function(eventor, client) { /* ... */ });
-client.on('mux', function(mx, client) { /* ... */ });
-
-// Do the same with cio.server(...) for server side transformer setup
+// then call listen() as you would normally
+server.listen(8123)
 ```
 
 ### Usage: Secured with TLS
@@ -237,10 +93,13 @@ This is a convenience so you don't have to write the file reading part.
 ```javascript
 // this uses my preferred aliases. You can use the Node names: key, cert, ca.
 var clientOrServerOptions = {
+
   // example of specifying a path
   private: 'path/to/private/key/file'
+
   // example of getting the buffer yourself
   , public: getPublicCertAsBuffer()
+
   // example of having the buffer already and placing into an array
   , root: [rootCertBuffer]
 };
@@ -248,8 +107,7 @@ var clientOrServerOptions = {
 
 Both client and server also allow `rejectUnauthorized` which makes it *require* certificates and secured communication. See the [Node TLS documentation](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback).
 
-The server also supports the `requestCert` for client whitelist/blacklist support. See the  [authenticate-client](https://github.com/elidoran/node-cio/blob/master/lib/authenticate-client.coffee) listener.
-
+The server can also support the `requestCert` for client whitelist/blacklist support. See the addon [authenticate-client](https://github.com/elidoran/node-cio-authenticate-client) module.
 
 
 ### Usage: Client vs Server
@@ -258,47 +116,148 @@ There is little difference between client and server.
 
 The server has:
 
-1. `requestCert` to deny clients.
-2. `isClientAllowed` and `rejectClient` for whitelist/blacklist of clients
-3. `noRelisten` to disable the default behavior of retrying the `listen()` when the error is `EADDRINUSE`
-4. `retryDelay` and `maxRetries` to control the retry behavior
+1. `relistener` set to `false` to disable the default behavior of retrying the `listen()` when the error is `EADDRINUSE`
+2. `retryDelay` and `maxRetries` to control the retry behavior
 
 The client has:
 
-1. `reconnect` for automatically reconnecting (not yet implemented)
+1. `host` for the `connect()` call
+2. `port` for the `connect()` call
+3. `reconnect` for automatically reconnecting (not yet implemented)
 
-The rest are shared by both.
+
+### Usage: Use Plugins
+
+```javascript
+var buildCio = require('cio');
+
+var cioOptions = {
+  // plugins are specified in an array to control order of execution
+  plugins: [
+    // specify this plugin by its name without options
+    '@cio/authenticate-client'
+
+    // specify this plugin with both its name and some options
+    { plugin: '@cio/transformer', options: { some: 'options'} }
+
+    // OR: specify a plugin builder function directly
+  ]
+};
+
+// this line builds the cio instance, requires each of those plugin names,
+// adds them to the chain of builders to process when creating a new connection,
+// and returns the cio instance ready to go.
+var cio = buildCio(cioOptions);
+
+// OR:
+// could alternatively add plugins after building the instance:
+cio.use('@cio/name');
+
+//  OR: if you already have the module
+var pluginModule = require('@cio/name');
+cio.use(pluginModule)
+
+//  OR: you can provide options with the plugin
+var pluginModule = require('@cio/name');
+cio.use(pluginModule, pluginOptions);
+```
+
+
+### Usage: Make a Plugin
+
+A plugin is a function called by `cio` to configure a new connection.
+
+It should be wrapped by a "builder function" which accepts options to enable configuring how the "plugin function" behaves.
+
+A module containing a plugin should export the "builder function".
+
+A skeleton example:
+
+```javascript
+// here's a listener function we'll add for a connect event
+// Note: client connect listeners don't receive the socket as the
+// first arg like server connection listeners do.
+// However, `cio` helps out by providing the socket as the first arg.
+// That way, whether it's client or server connections you'll always get
+// the `socket` as the first arg to your listener.
+function myPluginSocketConnectionListener(socket) {
+
+  // now, do something with the socket...
+}
+
+// here's the builder function for the plugin
+module.exports = function buildSomePlugin(pluginOptions) {
+  // consider contents of `pluginOptions` if you told your users
+  // there are some plugin options they can specify...
+
+  // return the actual plugin function `cio` will use
+  return function somePlugin() {
+    // `this` has properties:
+    //  `socket` - the socket connection, either client or server side
+    //  `isServer` - whether it's for a server. `false` means client side
+    //  `isSecure` - whether `tls` module is being used. `false` means `net` module
+    //  `options` - the options provided to `cio.client()` or `cio.server()`
+    //  `connectEvent` - see below for a description
+
+    // you can add listeners to the `socket` or... whatever
+
+    // Example adding a connection listener:
+    // the connect event has three different names depending on server/client
+    // and whether it's secure. To help out, use `this.connectEvent`
+    //   secured server: 'secureConnection'
+    //   regular server: 'connection'
+    //   client        : 'connect'
+    this.socket.on this.connectEvent, myPluginSocketConnectionListener
+
+    // Note: for a secure server it is 'secureConnection'. if you'd like to
+    // listen for a non-secure connection as well then use 'connection'
+  };
+}
+```
+
+There are advanced abilities for your plugin function to control its execution behavior because it runs in a [chain-builder](https://github.com/elidoran/chain-builder#execution-control). Look at that to learn about the `control` and `context` arguments.
 
 
 ## Options
 
-All defaults are *false* or *undefined*.
+All defaults are *false* or *undefined* unless stated otherwise.
 
-Name        | type   | Client/Server | Description
-----:       | :---:  | :------: | :-------
-[multiplex](https://github.com/elidoran/node-cio/blob/master/lib/multiplex.coffee)   | bool   | both | use `mux-demux` for multiplexing connection
-[eventor](https://github.com/elidoran/node-cio/blob/master/lib/eventor.coffee)     | bool   | both | use `duplex-emitter`. if `multiplex` is true, create 'events' stream
-[jsonify](https://github.com/elidoran/node-cio/blob/master/lib/jsonify.coffee)     | bool   | both | run connection thru `json-duplex-stream` for in+out
-[transform](https://github.com/elidoran/node-cio/blob/master/lib/transformer.coffee)   | Transform | both | pipe connection thru Transform and back to connection. if `jsonify` is true then the Transform is in the middle: `conn -> json.in -> transform -> json.out -> conn`
-[noRelisten](https://github.com/elidoran/node-cio/blob/master/lib/relistener.coffee)  | bool | server | server socket gets an error listener for EADDRINUSE which will retry three times to `listen()` before exiting. Set this to `true` to turn that off
+Name        |  Type        | Client/Server | Description
+----:       | :----------: | :-----------: | :-------
+[relistener](https://github.com/elidoran/node-cio/blob/master/lib/index.coffee)  | boolean | server | server socket gets an error listener for EADDRINUSE which will retry three times to `listen()` before exiting. Set this to `false` to turn that off
 [retryDelay](https://github.com/elidoran/node-cio/blob/master/lib/relistener.coffee)  | int  |  server | Defaults to 3 second delay before retrying `listen()`
 [maxRetries](https://github.com/elidoran/node-cio/blob/master/lib/relistener.coffee)  | int  |  server | Defaults to 3 tries before quitting
-[requestCert](https://github.com/elidoran/node-cio/blob/master/lib/authenticate-client.coffee)  | bool | server | will trigger using `tls` instead of `net`. Used for server only. Adds a listener which will get client name and check if they're allowed. Must specify `isClientAllowed` function. May specify `rejectClient` function. Default emits an error event with a message including the name of client rejected.
-[rejectUnauthorized](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback) | bool | both | requires proper certificates
-[key](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback) or private | file path or buffer | both | private key for TLS
-[cert](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback) or public | file path or buffer | both | public key for TLS
-[ca](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback) or root | file path or buffer | both | ca/root key
-[isClientAllowed](https://github.com/elidoran/node-cio/blob/master/lib/authenticate-client.coffee) | Function | server | Receives the `client name` for the certificate. Returning false will cause the client connection to be rejected (closed).
-[rejectClient](https://github.com/elidoran/node-cio/blob/master/lib/authenticate-client.coffee) | Function | server | When `isClientAllowed` returns false this function is called with client name and socket. When not specified and `isClientAllowed` returns false then an 'error' event is emitted (`'Client Rejected: ' + clientName`).
-reconnect | bool | client | use `reconnect-net` to handle reconnecting. **not yet implemented**
+[rejectUnauthorized](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback) | boolean | both | requires proper certificates
+[key](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback) or private | filepath or buffer | both | private key for TLS
+[cert](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback) or public | filepath or buffer | both | public key for TLS
+[ca](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback) or root | filepath or buffer | both | ca/root key
+reconnect | boolean | client | use `reconnect-net` to handle reconnecting. **not yet implemented**
+host | string | client | provided to the `connect()` call.
+port | int | client | provided to the `connect()` call
+[requestCert](https://github.com/elidoran/node-cio-authenticate-client)  | boolean | server | will trigger using `tls` instead of `net`. Used for server only. Adds a listener which will get client name and check if they're allowed. Must specify `isClientAllowed` function. May specify `rejectClient` function. Default emits an error event with a message including the name of client rejected.
 
-I will eventually change the 'bool' types to allow objects so individual configurations can be provided for the listeners.
 
 ## Events
 
-1. 'mux' - When `multiplex` is on, 'mux' is emitted on a new socket after the 'on connect' listeners have run. Use this to configure the mux instance. For example, adding more streams to it and associated handlers.
-2. 'eventor' - When `eventor` is on, 'eventor' is emitted on a new socket after the 'on connect' listeners have run. Use this to setup event handlers on the socket specific `eventor`.
-3. 'jsonify' - When 'jsonify' is on, 'jsonify' is emitted when the `json-duplex-stream` has been setup with the socket piping to its input and its output piping to the socket. Use this to specify what should happen in the middle, after the jsonified input and how it gets back to the jsonify output.
+1. 'relisten' - When an `EADDRINUSE` error causes a relisten call then it emits this event.
+
+
+## Why?
+
+While reading various "how to" articles and instructional books I see a lot of easy to use patterns. I want to make those very easy to use by providing the boilerplate involved.
+
+I hope to build up a library of addons in scope [@cio](https://www.npmjs.com/~cio) for working with lots of helpful modules and beneficial patterns.
+
+Please feel free to suggest modules, offer PR's, and offer to publish an addon to the [@cio](https://www.npmjs.com/~cio) scope.
+
+
+## Contributions
+
+Please suggest new addon modules for the [@cio](https://www.npmjs.com/~cio) scope. If you'd like to publish a module to the scope, contact me and I'll make it available to you.
+
+I'm not certain yet, but, I'm thinking a good pattern for addons which relate to a specific module, such as my use of `duplex-emitter`, is to use their name. So, for my use of `duplex-emitter` I made `@cio/duplex-emitter`.
+
+Feel free to suggest an alternative or a unique name.
 
 
 ## MIT License

@@ -20,11 +20,9 @@ module.exports = (options) ->
       # so, if the last arg is a callback...
       if typeof listenArgs[listenArgs.length - 1] is 'function'
 
-        # make a copy of the args array so we can change it...
-        listenArgs = listenArgs.slice()
-
-        # remove the callback to avoid adding it again
-        listenArgs.pop()
+        # make a copy of the args array so we can change it
+        # and remove the function at the same time
+        listenArgs = listenArgs[...-1]
 
       # now make the real listen() call with their args
       server.originalListen args...

@@ -191,7 +191,7 @@ module.exports = function buildSomePlugin(pluginOptions) {
     //  `socket` - the socket connection, either client or server side
     //  `isServer` - whether it's for a server. `false` means client side
     //  `isSecure` - whether `tls` module is being used. `false` means `net` module
-    //  `options` - the options provided to `cio.client()` or `cio.server()` calls
+    //  `options` - the options provided to `cio.client()` or `cio.server()`
     //  `connectEvent` - see below for a description
 
     // you can add listeners to the `socket` or... whatever
@@ -210,7 +210,7 @@ module.exports = function buildSomePlugin(pluginOptions) {
 }
 ```
 
-There are advanced abilities for your plugin function to control its execution behavior because it runs in a [chain-builder](). Look at that to learn about the `control` and `context` arguments.
+There are advanced abilities for your plugin function to control its execution behavior because it runs in a [chain-builder](https://github.com/elidoran/chain-builder#execution-control). Look at that to learn about the `control` and `context` arguments.
 
 
 ## Options

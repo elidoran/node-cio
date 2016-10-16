@@ -102,19 +102,24 @@ describe 'test cio', ->
               serverConnection.on 'data', (data) -> received = data.toString 'utf8'
               serverConnection.on 'end', -> server.close()
 
+
           # once the server is listening do the client stuffs
           server.on 'listening', ->
             listening = true
 
             # create a client via `cio` with its transform and the same port as the server
-            client = cio.client
+            clientOptions =
               port: server.address().port
+              host: 'localhost'
               key : helperFile 'client.private.pem'
               cert: helperFile 'client.cert.pem'
               ca  : helperFile 'ca.cert.pem'
               onConnect: ->
                 connected = true
                 client.end 'done', 'utf8'
+
+            client = cio.client clientOptions
+
 
         before 'wait for server to listen', (done) ->
           server.listen 2468, 'localhost', done
@@ -162,6 +167,7 @@ describe 'test cio', ->
             # create a client via `cio` with its transform and the same port as the server
             client = cio.client
               port: server.address().port
+              host: 'localhost'
               key : helperFile 'client.private.pem'
               cert: helperFile 'client.cert.pem'
               ca  : helperFile 'ca.cert.pem'
@@ -228,6 +234,7 @@ describe 'test cio', ->
           # create a client via `cio` with its transform and the same port as the server
           client = cio.client
             port     : server.address().port
+            host     : 'localhost'
             onConnect: ->
               connected++
               client.end 'done', 'utf8'
@@ -235,7 +242,8 @@ describe 'test cio', ->
         before 'wait for server to listen', (done) ->
           # call done() when it successfully listens...
           server.listen serverPort, 'localhost', ->
-            if server.listening is true then done()
+            # Note: node 0.12 and node 4 don't have server.listening ...
+            if listening > 0 then done()
 
         before 'wait for server to close', (done) ->
           server.on 'close', ->
@@ -287,6 +295,7 @@ describe 'test cio', ->
           # create a client via `cio` with its transform and the same port as the server
           client = cio.client
             port     : server.address().port
+            host     : 'localhost'
             onConnect: ->
               connected++
               client.end 'done', 'utf8'
@@ -294,7 +303,8 @@ describe 'test cio', ->
         before 'wait for server to listen', (done) ->
           # call done() when it successfully listens...
           server.listen serverPort, 'localhost', ->
-            if server.listening then done()
+            # Note: node 0.12 and node 4 don't have server.listening ...
+            if listening > 0 then done()
 
         before 'wait for server to close', (done) ->
           server.on 'close', ->

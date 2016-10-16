@@ -5,7 +5,7 @@
 
 Conveniently create net/tls server/client sockets with helpful listeners providing common functionality.
 
-Accepts plugins which apply listeners to new connections.
+Accepts plugins which can affect each new connection.
 
 
 ## Install
@@ -45,19 +45,21 @@ var cio = require('cio')(cioModuleOptions)
 ### Usage: Simple Client
 
 ```javascript
-var clientOptions = {
-  port: 12345
-  , host: 'localhost'
-  , onConnect: onConnect
-};
+var client = null
+  , clientOptions = {
+    port: 12345
+    , host: 'localhost'
+    , onConnect: onConnect
+  };
 
 client = cio.client(options);
 
 // the result is a client socket created by:
-// `net.connect({port: 12345, host:'localhost'})`
+// `net.connect({port: 12345, host:'localhost'}, onConnect)`
 
 function onConnect() {
   // do something with `client` now that we're connected
+  client.end('blah');
 }
 ```
 
@@ -117,24 +119,10 @@ The server has:
 
 The client has:
 
-1. `reconnect` for automatically reconnecting (not yet implemented)
+1. `host` for the `connect()` call
+2. `port` for the `connect()` call
+3. `reconnect` for automatically reconnecting (not yet implemented)
 
-
-## Options
-
-All defaults are *false* or *undefined* unless stated otherwise.
-
-Name        | type   | Client/Server | Description
-----:       | :---:  | :------: | :-------
-[relistener](https://github.com/elidoran/node-cio/blob/master/lib/index.coffee)  | bool | server | server socket gets an error listener for EADDRINUSE which will retry three times to `listen()` before exiting. Set this to `false` to turn that off
-[retryDelay](https://github.com/elidoran/node-cio/blob/master/lib/relistener.coffee)  | int  |  server | Defaults to 3 second delay before retrying `listen()`
-[maxRetries](https://github.com/elidoran/node-cio/blob/master/lib/relistener.coffee)  | int  |  server | Defaults to 3 tries before quitting
-[rejectUnauthorized](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback) | bool | both | requires proper certificates
-[key](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback) or private | file path or buffer | both | private key for TLS
-[cert](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback) or public | file path or buffer | both | public key for TLS
-[ca](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback) or root | file path or buffer | both | ca/root key
-reconnect | bool | client | use `reconnect-net` to handle reconnecting. **not yet implemented**
-[requestCert](https://github.com/elidoran/node-cio-authenticate-client)  | bool | server | will trigger using `tls` instead of `net`. Used for server only. Adds a listener which will get client name and check if they're allowed. Must specify `isClientAllowed` function. May specify `rejectClient` function. Default emits an error event with a message including the name of client rejected.
 
 ### Usage: Use Plugins
 
@@ -183,10 +171,12 @@ A skeleton example:
 
 ```javascript
 // here's a listener function we'll add for a connect event
+// Note: client connect listeners don't receive the socket as the
+// first arg like server connection listeners do.
+// However, `cio` helps out by providing the socket as the first arg.
+// That way, whether it's client or server connections you'll always get
+// the `socket` as the first arg to your listener.
 function myPluginSocketConnectionListener(socket) {
-  // server connection listeners are provided the socket,
-  // client connect listeners are not...
-  if (!!socket) socket = this
 
   // now, do something with the socket...
 }
@@ -203,6 +193,7 @@ module.exports = function buildSomePlugin(pluginOptions) {
     //  `isServer` - whether it's for a server. `false` means client side
     //  `isSecure` - whether `tls` module is being used. `false` means `net` module
     //  `options` - the options provided to `cio.client()` or `cio.server()` calls
+    //  `connectEvent` - see below for a description
 
     // you can add listeners to the `socket` or... whatever
 
@@ -221,6 +212,25 @@ module.exports = function buildSomePlugin(pluginOptions) {
 ```
 
 There are advanced abilities for your plugin function to control its execution behavior because it runs in a [chain-builder](). Look at that to learn about the `control` and `context` arguments.
+
+
+## Options
+
+All defaults are *false* or *undefined* unless stated otherwise.
+
+Name        | type   | Client/Server | Description
+----:       | :---:  | :------: | :-------
+[relistener](https://github.com/elidoran/node-cio/blob/master/lib/index.coffee)  | bool | server | server socket gets an error listener for EADDRINUSE which will retry three times to `listen()` before exiting. Set this to `false` to turn that off
+[retryDelay](https://github.com/elidoran/node-cio/blob/master/lib/relistener.coffee)  | int  |  server | Defaults to 3 second delay before retrying `listen()`
+[maxRetries](https://github.com/elidoran/node-cio/blob/master/lib/relistener.coffee)  | int  |  server | Defaults to 3 tries before quitting
+[rejectUnauthorized](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback) | bool | both | requires proper certificates
+[key](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback) or private | file path or buffer | both | private key for TLS
+[cert](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback) or public | file path or buffer | both | public key for TLS
+[ca](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback) or root | file path or buffer | both | ca/root key
+reconnect | bool | client | use `reconnect-net` to handle reconnecting. **not yet implemented**
+host | ... | client | provided to the `connect()` call.
+port | ... | client | provided to the `connect()` call
+[requestCert](https://github.com/elidoran/node-cio-authenticate-client)  | bool | server | will trigger using `tls` instead of `net`. Used for server only. Adds a listener which will get client name and check if they're allowed. Must specify `isClientAllowed` function. May specify `rejectClient` function. Default emits an error event with a message including the name of client rejected.
 
 
 ## Events

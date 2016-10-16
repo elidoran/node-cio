@@ -138,7 +138,9 @@ var cioOptions = {
     '@cio/authenticate-client'
 
     // specify this plugin with both its name and some options
-    { plugin: '@cio/transformer', options: { some: 'options'} }  
+    { plugin: '@cio/transformer', options: { some: 'options'} }
+
+    // OR: specify a plugin builder function directly
   ]
 };
 

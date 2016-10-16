@@ -64,4 +64,4 @@ module.exports = (options) ->
     plugins.push plugin
 
   # build the chain with the plugins and return it
-  buildChain plugins
+  buildChain array:plugins

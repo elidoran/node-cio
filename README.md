@@ -30,34 +30,33 @@ The module accepts options to future proof it. This means the require call retur
 
 ```javascript
 // one thing at a time:
-var buildCio = require('cio')      // #1
+var buildCio = require('cio');      // #1
 
-var cio = buildCio(moduleOptions)  // #2
+var cio = buildCio(moduleOptions);  // #2
 
-var server = cio.server(options)   // #3
+var server = cio.server(options);   // #3
 
 // combine #1 and #2
-var cio = require('cio')()
+var cio = require('cio')();
 // and again with module options
-var cio = require('cio')(cioModuleOptions)
+var cio = require('cio')(cioModuleOptions);
 ```
 
 ### Usage: Simple Client
 
 ```javascript
-var client = null
-  , clientOptions = {
-    port: 12345
-    , host: 'localhost'
-    , onConnect: onConnect
-  };
+var clientOptions = {
+  port: 12345
+  , host: 'localhost'
+  , onConnect: onConnect
+};
 
-client = cio.client(options);
+var client = cio.client(clientOptions);
 
 // the result is a client socket created by:
 // `net.connect({port: 12345, host:'localhost'}, onConnect)`
 
-function onConnect() {
+function onConnect(client) {
   // do something with `client` now that we're connected
   client.end('blah');
 }
@@ -69,7 +68,7 @@ function onConnect() {
 var serverOptions = {
 };
 
-server = cio.server(options);
+var server = cio.server(options);
 
 // the result is a server socket created by:
 // `net.createServer()`

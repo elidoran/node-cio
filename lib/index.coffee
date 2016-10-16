@@ -5,6 +5,9 @@ tls = require 'tls'
 # use this to read certificate files
 readCerts = require './read-certs'
 
+# handles EADDRINUSE error by retrying to listen()
+relistener = require './relistener'
+
 # provides the `cio.use()` function to add plugins
 getPlugin = require './get-plugin'
 
@@ -18,7 +21,7 @@ module.exports = (builderOptions) ->
   chain = buildPluginChain builderOptions
 
   # build socket builder function
-  builder = (options, isServer) ->
+  builder = (options = {}, isServer) ->
 
     # if there are cert file paths specified, read the files now
     readCerts options
@@ -58,6 +61,15 @@ module.exports = (builderOptions) ->
 
     if options.onConnect?
       socket.on (if isServer then 'connection' else 'connect'), options.onConnect
+
+    # I'm choosing to keep the `relistener` ability in `cio` and adding it
+    # unless specified *not* to. It's a simple helper for an annoying issue.
+    if isServer and options.relistener isnt false
+      relistener
+        server    : socket
+        retryDelay: options.retryDelay
+        maxRetries: options.maxRetries
+        relisten  : options.relisten
 
     # 5. all done
     return socket

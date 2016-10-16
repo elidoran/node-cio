@@ -225,14 +225,14 @@ Name        |  Type        | Client/Server | Description
 [relistener](https://github.com/elidoran/node-cio/blob/master/lib/index.coffee)  | boolean | server | server socket gets an error listener for EADDRINUSE which will retry three times to `listen()` before exiting. Set this to `false` to turn that off
 [retryDelay](https://github.com/elidoran/node-cio/blob/master/lib/relistener.coffee)  | int  |  server | Defaults to 3 second delay before retrying `listen()`
 [maxRetries](https://github.com/elidoran/node-cio/blob/master/lib/relistener.coffee)  | int  |  server | Defaults to 3 tries before quitting
-[rejectUnauthorized](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback) | bool | both | requires proper certificates
+[rejectUnauthorized](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback) | boolean | both | requires proper certificates
 [key](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback) or private | filepath or buffer | both | private key for TLS
-[cert](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback) or public | file-path or buffer | both | public key for TLS
-[ca](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback) or root | file-path or buffer | both | ca/root key
-reconnect | bool | client | use `reconnect-net` to handle reconnecting. **not yet implemented**
-host | ... | client | provided to the `connect()` call.
-port | ... | client | provided to the `connect()` call
-[requestCert](https://github.com/elidoran/node-cio-authenticate-client)  | bool | server | will trigger using `tls` instead of `net`. Used for server only. Adds a listener which will get client name and check if they're allowed. Must specify `isClientAllowed` function. May specify `rejectClient` function. Default emits an error event with a message including the name of client rejected.
+[cert](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback) or public | filepath or buffer | both | public key for TLS
+[ca](https://nodejs.org/docs/latest/api/tls.html#tls_tls_connect_options_callback) or root | filepath or buffer | both | ca/root key
+reconnect | boolean | client | use `reconnect-net` to handle reconnecting. **not yet implemented**
+host | string | client | provided to the `connect()` call.
+port | int | client | provided to the `connect()` call
+[requestCert](https://github.com/elidoran/node-cio-authenticate-client)  | boolean | server | will trigger using `tls` instead of `net`. Used for server only. Adds a listener which will get client name and check if they're allowed. Must specify `isClientAllowed` function. May specify `rejectClient` function. Default emits an error event with a message including the name of client rejected.
 
 
 ## Events

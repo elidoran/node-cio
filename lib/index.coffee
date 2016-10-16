@@ -56,6 +56,10 @@ module.exports = (builderOptions) ->
         isServer: isServer
         isSecure: isSecure
         options : options
+        connectEvent:
+          if isSecure and isServer then 'secureConnection'
+          else if isServer then 'connection'
+          else 'connect'
 
     # if the chain failed then return an error back along with info
     if result.error? then return error:'Failed to configure socket', reason:result

@@ -23,9 +23,6 @@ module.exports = (builderOptions) ->
   # build socket builder function
   builder = (options = {}, isServer) ->
 
-    # if there are cert file paths specified, read the files now
-    readCerts options
-
     # 1. secure if some options related to a secure connection are specified
     # TODO: should probably ensure they specify key/cert otherwise it won't work.
     # NOTE: I allow aliases private/public.
@@ -35,6 +32,14 @@ module.exports = (builderOptions) ->
       if options.private? then options.key = options.private
       if options.public? then options.cert = options.public
       if options.root? then options.ca = options.root
+      # let's delete the aliases, just in case...
+      delete options.private
+      delete options.public
+      delete options.root
+
+      # now read the certs
+      # if there are cert file paths specified, read the files now
+      readCerts options
 
 
     # 2. build the socket based on `isServer` and `isSecure`

@@ -1,4 +1,4 @@
-
+extend = require 'extend'
 getPlugin = require './get-plugin'
 
 # use this to build a chain of functions to call for a new connection
@@ -36,8 +36,10 @@ module.exports = (options) ->
           # if there are plugin specific options...
           if plugin.options?
 
-            # and, there are builder options, then combine them
-            if options? then extend {}, options, plugin.options
+            # and, there are builder options other than `plugins`,
+            # then combine them
+            if Object.keys(options).length > 1
+              extend {}, options, plugin.options
 
             # else, without builder options, just use the plugin options
             else plugin.options
@@ -46,8 +48,11 @@ module.exports = (options) ->
           # (which may be undefined)
           else options
 
+        # set plugin to the internal value
+        plugin = plugin.plugin
+
       # otherwise we didn't get a value value so return an error
-      else return error:"Plugin #{index} is an invalid type:" + typeof(plugin)
+      else return error:"Plugin #{index} is an invalid type: " + typeof(plugin)
 
     # now get the plugin with the value and the options
     plugin = getPlugin plugin, pluginOptions

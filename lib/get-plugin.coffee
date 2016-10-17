@@ -8,7 +8,7 @@ module.exports = (plugin, options) ->
       try # require it, then call it with the options
         plugin = require(plugin)(options)
       catch error
-        return error:'Unable to require plugin: '+plugin, Error:error
+        return error:'Unable to require plugin: '+plugin, reason:error.message
 
     # if it's a function, then build the plugin with the options
     when 'function' then plugin = plugin options

@@ -12,6 +12,22 @@ helperFile = (name) -> corepath.resolve __dirname, '..', 'helpers', name
 
 describe 'test cio', ->
 
+  describe 'errors', ->
+
+    it 'should return an error because string is an invalid plugin', ->
+
+      badCio = buildCio plugins: [ '/invalid/plugin' ]
+      assert badCio.error
+      assert badCio.reason
+      assert.equal badCio.reason.reason, 'Cannot find module \'/invalid/plugin\''
+
+    it 'should return an error because a function returning a string is an invalid plugin', ->
+
+      badCio = buildCio plugins: [ -> 'invalid plugin' ]
+      assert badCio.error
+      assert.equal badCio.reason.error, 'Elements must be functions'
+
+
   describe 'client and server', ->
 
     describe 'with defaults', ->

@@ -43,9 +43,8 @@
     "through2": "^2.0.1"
   },
   "dependencies": {
-    "chain-builder": "^0.7.1",
-    "extend": "^3.0.0",
-    "reconnect-net": "^1.1.1"
+    "chain-builder": "^0.8.0",
+    "extend": "^3.0.0"
   },
   "engines": {
     "node": ">=0.12"

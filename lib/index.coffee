@@ -32,6 +32,9 @@ module.exports = (builderOptions) ->
   # in for use.
   chain = buildPluginChain builderOptions
 
+  if chain.error?
+    return error:'Failed to build plugin chain: '+chain.error, reason:chain
+
   # build socket builder function
   builder = (options = {}, isServer) ->
 
@@ -74,7 +77,8 @@ module.exports = (builderOptions) ->
           else 'connect'
 
     # if the chain failed then return an error back along with info
-    if result.error? then return error:'Failed to configure socket', reason:result
+    if result.error?
+      return error:'Failed to configure socket with plugin chain', reason:result
 
     # 4. add their listeners, if they exist
     if options.onSecureConnect?

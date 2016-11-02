@@ -293,64 +293,64 @@ describe 'test cio', ->
         it 'should close once', -> assert.equal closed, 1
 
 
-      # describe 'and specified relisten option', ->
-      #
-      #   cio = buildCio()
-      #
-      #   serverPort = 6820
-      #
-      #   # remember these for assertions
-      #   client = null
-      #   received = null
-      #   listening = 0
-      #   relistened = 0
-      #   connected = 0
-      #   closed = 0
-      #
-      #   # let's create another server which uses the same port to cause EADDRINUSE
-      #   otherServer = cio.server()
-      #   otherServer.listen serverPort, 'localhost'
-      #
-      #   # use `cio` to create a server with a tranform (and an arbitrary port)
-      #   server = cio.server
-      #     onConnect: (connection) ->
-      #       serverConnection = connection
-      #       serverConnection.on 'data', (data) -> received = data.toString 'utf8'
-      #       serverConnection.on 'end', -> server.close()
-      #     retryDelay: 100
-      #     maxRetries: 5
-      #     relisten: ->
-      #       relistened++
-      #       if relistened > 3 then otherServer.close()
-      #       server.listen serverPort, 'localhost'
-      #
-      #   # once the server is listening do the client stuffs
-      #   server.on 'listening', ->
-      #     listening++
-      #
-      #     # create a client via `cio` with its transform and the same port as the server
-      #     client = cio.client
-      #       port     : server.address().port
-      #       host     : 'localhost'
-      #       onConnect: ->
-      #         connected++
-      #         client.end 'done', 'utf8'
-      #
-      #   before 'wait for server to listen', (done) ->
-      #     # call done() when it successfully listens...
-      #     server.listen serverPort, 'localhost', ->
-      #       # Note: node 0.12 and node 4 don't have server.listening ...
-      #       if listening > 0 then done()
-      #
-      #   before 'wait for server to close', (done) ->
-      #     server.on 'close', ->
-      #       closed++
-      #       done()
-      #
-      #   it 'should listen once', -> assert.equal listening, 1
-      #
-      #   it 'should connect once', -> assert.equal connected, 1
-      #
-      #   it 'should receive', -> assert.equal received, 'done'
-      #
-      #   it 'should close once', -> assert.equal closed, 1
+      describe 'and specified relisten option', ->
+
+        cio = buildCio()
+
+        serverPort = 6820
+
+        # remember these for assertions
+        client = null
+        received = null
+        listening = 0
+        relistened = 0
+        connected = 0
+        closed = 0
+
+        # let's create another server which uses the same port to cause EADDRINUSE
+        otherServer = cio.server()
+        otherServer.listen serverPort, 'localhost'
+
+        # use `cio` to create a server with a tranform (and an arbitrary port)
+        server = cio.server
+          onConnect: (connection) ->
+            serverConnection = connection
+            serverConnection.on 'data', (data) -> received = data.toString 'utf8'
+            serverConnection.on 'end', -> server.close()
+          retryDelay: 100
+          maxRetries: 5
+          relisten: ->
+            relistened++
+            if relistened > 3 then otherServer.close()
+            server.listen serverPort, 'localhost'
+
+        # once the server is listening do the client stuffs
+        server.on 'listening', ->
+          listening++
+
+          # create a client via `cio` with its transform and the same port as the server
+          client = cio.client
+            port     : server.address().port
+            host     : 'localhost'
+            onConnect: ->
+              connected++
+              client.end 'done', 'utf8'
+
+        before 'wait for server to listen', (done) ->
+          # call done() when it successfully listens...
+          server.listen serverPort, 'localhost', ->
+            # Note: node 0.12 and node 4 don't have server.listening ...
+            if listening > 0 then done()
+
+        before 'wait for server to close', (done) ->
+          server.on 'close', ->
+            closed++
+            done()
+
+        it 'should listen once', -> assert.equal listening, 1
+
+        it 'should connect once', -> assert.equal connected, 1
+
+        it 'should receive', -> assert.equal received, 'done'
+
+        it 'should close once', -> assert.equal closed, 1

@@ -1,84 +1,100 @@
 net = require 'net'
 tls = require 'tls'
+buildChain = require 'chain-builder'
+readCerts = require './read-certs'
 
 class Cio
 
   constructor: (@_options) ->
-    @_readCerts @_options
-    @_events = new require('events').EventEmitter
 
-  _readCerts: require './read-certs'
-  _relistener: require './relistener'
+    @_clientChain = buildChain()
+    @_serverChain = buildChain()
+    @_serverClientChain = buildChain()
 
-  _build: (isServer, options = {}) ->
+    @_clientChain.add [
+      # functions for building a new client
+      require './move-aliases'
+      require './secure'
+      require './ensure-certs'
+      require './create-client' # includes adding connect listener from options
+    ]
 
-    # 1. combine options
-    if @_options?
-      options[key] ?= value for key,value of @_options
+    @_serverChain.add [
+      # functions for building a new server
+      require './move-aliases'
+      require './secure'
+      require './ensure-certs'
+      require './create-server' # includes adding connect listener from options
+      require './relistener'
+      require('./emit-new-server-client') serverClientChain:@_serverClientChain
+    ]
 
-    # 2. secure if some options related to a secure connection are specified
-    if options.rejectUnauthorized or options.key? or options.private? or options.requestCert
-      isSecure = true
-      # copy aliases and delete them
-      for alias,key of private:'key', public:'cert', root:'ca'
-        options[key] = options[alias]
-        delete options[alias]
+    @_serverClientChain.add [
+      # functions for affecting a new server client
+      # no aliases cuz no cert stuff for a server client
+      # there aren't new options for this...require './combine-options'
+      # no 'secured' cuz there's no cert stuff for a server client
+      # no 'create' cuz it's created for us
+      # for secured server clients we want to authenticate them.
+      # by default everyone with a valid cert is allowed.
+      require './authenticate-client'
+    ]
 
-    # 3. if there are cert file paths specified, read the files now
-    @_readCerts options
+    if @_options?.noRelisten then @_serverChain.disable 'cio/relistener'
 
-    # 4. choose creator and use its function to build the socket
-    socket = do (isServer, isSecure) ->
-      functionName = if isServer then 'createServer' else 'connect'
-      creator = if isSecure then tls else net
-      creator[functionName] options
+  client: (options) -> @_run @_clientChain, options
+  server: (options) -> @_run @_serverChain, options
 
-    # 5. call listeners
-    if isServer # emit the server socket, and when clients connect to it
-      @_events.emit 'ns', socket, options, builderOptions
-      which = if isSecure then 'secureConnection' else 'connection'
-      events = @_events
-      socket.on which, (conn) -> events.emit 'nsc', conn, options, builderOptions
+  _run: (chain, options) ->
+    # # build options for chain.run(), choose the options which exists
+    # if they specified options specific to the chain, pull them out
+    runOptions = options?.chain ? {}
 
-    # otherwise, tell them it's a client socket
-    else @_events.emit 'nc', socket, options, builderOptions
+    # set the context to be the most recent options object
+    runOptions.context ?= options ? @_options ? {}
 
-    # 6. add their listeners, if they exist
-    if options.onSecureConnect?
-      socket.on 'secureConnection', options.onSecureConnect
+    # if they both exist, put the class one as a parent of the new one
+    if options? and @_options? then options.__proto__ = @_options
 
-    if options.onConnect?
-      socket.on (if isServer then 'connection' else 'connect'), options.onConnect
+    # call the chain
+    chain.run runOptions
 
-    # 7. unless 'address-in-use' helper is specified to *not* be used, then add it
-    # for 'listening' to retry listen() the config'd number of times with config'd delay
-    if isServer and not options.noRelisten then @_relistener server:socket
-
-    # all done
-    return socket
-
-  # load a string via require(), return a function, and return an error otherwise
-  _load: (arg) ->
-    switch typeof arg
-      when 'string' then @_load require arg
-      when 'function' then arg
-      else error:'must be requireable string or function',arg:arg
+  # users supply listeners based on which socket they apply to.
+  # use generic functions cuz it's a similar pattern
+  onClient      : (args...) -> @_fromArgs @_clientChain, args
+  onServer      : (args...) -> @_fromArgs @_serverChain, args
+  onServerClient: (args...) -> @_fromArgs @_serverClientChain, args
 
   # look thru args and load stuff
-  _fromArgs: (event, args) ->
+  _fromArgs: (chain, args) ->
+    # unwrap an array arg
     if Array.isArray args[0] then args = args[0]
 
+    # for each arg, load it, and add the fn to the chain.
+    # if an error occurs, return it immediately
     for arg in args
       fn = @_load arg
       if fn.error? then return fn
-      @_events.on event, fn
+      result = chain.add fn
+      if result?.error? then return result
 
-    client: (options) -> @_build false, options # isServer = false
-    server: (options) -> @_build true, options  # isServer = true
+  # load a string via require(), return a function, or return an error otherwise
+  _load: (arg) ->
+    switch typeof arg
+      when 'string'
+        try
+          @_load require arg
+        catch error
+          error:'Unable to require module: ' + arg, reason:error
 
-    onClient      : (args...) -> @_fromArgs 'nc', args  # 'nc'  = 'new client'
-    onServer      : (args...) -> @_fromArgs 'ns', args  # 'ns'  = 'new server'
-    onServerClient: (args...) -> @_fromArgs 'nsc', args # 'nsc' = 'new server client'
+      when 'function' then arg
+
+      else error:'must be a require()\'able string or a function',arg:arg
 
 
-module.exports = (options) -> new Cio options
+module.exports = (options) ->
+
+  # if the certs are provided then try to read them now
+  readCerts options if options?
+
+  new Cio options

@@ -1,9 +1,9 @@
 net = require 'net'
 tls = require 'tls'
 
-module.exports = ->
+module.exports = (_, context) ->
   creator = if @isSecure then tls else net
-  @client = creator.connect options, options.onConnect
+  @client = creator.connect context, context?.onConnect
 
   return
 

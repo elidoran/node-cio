@@ -1,4 +1,3 @@
-
 fs  = require 'fs'
 corepath = require 'path'
 
@@ -23,6 +22,6 @@ module.exports = (options) ->
         content = fs.readFileSync path
         options[key] = content
       catch error
-        return error:error, message:"Unable to read '#{key}' from:"+path
+        return reason:error, error:"Unable to read '#{key}' from: "+path
 
   return

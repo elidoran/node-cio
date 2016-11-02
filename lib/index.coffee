@@ -1,127 +1,136 @@
-# use these for making the connections
 net = require 'net'
 tls = require 'tls'
-
-# use this to read certificate files
+buildChain = require 'chain-builder'
 readCerts = require './read-certs'
 
-# handles EADDRINUSE error by retrying to listen()
-relistener = require './relistener'
+# this is used to order the array of functions used by an event chain
+order = require 'ordering'
 
-# provides the `cio.use()` function to add plugins
-getPlugin = require './get-plugin'
+# mark a chain as *not* ordered when an add/remove occurs
+markChanged = (event) -> event.chain.__isOrdered = false
 
-# reads the options' `plugins` value and loads them into a chain
-buildPluginChain = require './plugin-chain'
-
-# help out client connect listeners by supplying `socket` as first arg.
-# return a function which passes `this` as the first arg cuz its the socket
-addSocketArg = (fn) -> -> fn this
-
-onConnectWrapper = (event, listener) ->
-  if event is 'connect' then listener = addSocketArg listener
-  this.originalOn event, listener
-
-onceConnectWrapper = (event, listener) ->
-  if event is 'connect' then listener = addSocketArg listener
-  this.originalOn event, listener
-
-module.exports = (builderOptions) ->
-
-  # check for `plugins`, if there are some, then 'require' them and load them
-  # in for use.
-  chain = buildPluginChain builderOptions
-
-  if chain.error?
-    return error:'Failed to build plugin chain: '+chain.error, reason:chain
-
-  # build socket builder function
-  builder = (options = {}, isServer) ->
-
-    # 1. secure if some options related to a secure connection are specified
-    # TODO: should probably ensure they specify key/cert otherwise it won't work.
-    # NOTE: I allow aliases private/public.
-    if options.rejectUnauthorized or options.key? or options.private? or options.requestCert
-      isSecure = true
-      # convert aliases
-      if options.private? then options.key = options.private
-      if options.public? then options.cert = options.public
-      if options.root? then options.ca = options.root
-      # let's delete the aliases, just in case...
-      delete options.private
-      delete options.public
-      delete options.root
-
-      # now read the certs
-      # if there are cert file paths specified, read the files now
-      readCerts options
+# order the array before a chain run executes
+ensureOrdered = (event) ->
+  unless event.chain.__isOrdered is true
+    order event.chain.array
+    event.chain.__isOrdered = true
 
 
-    # 2. build the socket based on `isServer` and `isSecure`
-    socket =
-      if isSecure
-        if isServer then tls.createServer options else tls.connect options
-      else
-        if isServer then net.createServer options else net.connect options
+class Cio
 
-    # 3. process through build chain adding listeners and configuring
-    result = chain.run
-      context: # provide the necessary stuff to each function call
-        socket  : socket
-        isServer: isServer
-        isSecure: isSecure
-        options : options
-        connectEvent:
-          if isSecure and isServer then 'secureConnection'
-          else if isServer then 'connection'
-          else 'connect'
+  constructor: (@_options) ->
 
-    # if the chain failed then return an error back along with info
-    if result.error?
-      return error:'Failed to configure socket with plugin chain', reason:result
+    # TODO:
+    #   check for error results from all of these.
+    #   set it on _error for the builder function to find and return
 
-    # 4. add their listeners, if they exist
-    if options.onSecureConnect?
-      socket.on 'secureConnection', options.onSecureConnect
+    @_clientChain = buildChain()
+    @_serverChain = buildChain()
+    @_serverClientChain = buildChain()
 
-    if options.onConnect?
-      socket.on (if isServer then 'connection' else 'connect'), options.onConnect
+    # order the chains
+    for chain in [ @_clientChain, @_serverChain, @_serverClientChain ]
+      chain.on 'add', markChanged
+      chain.on 'remove', markChanged
+      chain.on 'start', ensureOrdered
 
-    # 5. add 'relistener'
-    # I'm choosing to keep the `relistener` ability in `cio` and adding it
-    # unless specified *not* to. It's a simple helper for an annoying issue.
-    if isServer and options.relistener isnt false
-      relistener
-        server    : socket
-        retryDelay: options.retryDelay
-        maxRetries: options.maxRetries
-        relisten  : options.relisten
 
-    # 6. help client connect listeners by providing socket as arg1
-    if not isServer
-      # hold onto original functions
-      socket.originalOn = socket.on
-      socket.originalOnce = socket.once
+    @_clientChain.add [
+      # functions for building a new client
+      require './move-aliases'
+      require './secure'
+      require './ensure-certs'
+      require './create-client' # includes adding connect listener from options
+    ]
 
-      # new one wraps connect listeners so they have the socket as first arg
-      socket.on = onConnectWrapper
-      socket.once = onceConnectWrapper
+    @_serverChain.add [
+      # functions for building a new server
+      require './move-aliases'
+      require './secure'
+      require './ensure-certs'
+      require './create-server' # includes adding connect listener from options
+      require './relistener'
+      require('./emit-new-server-client') serverClientChain:@_serverClientChain
+    ]
 
-    # 7. all done
-    return socket
+    @_serverClientChain.add [
+      # functions for affecting a new server client
+      # no aliases cuz no cert stuff for a server client
+      # there aren't new options for this...require './combine-options'
+      # no 'secured' cuz there's no cert stuff for a server client
+      # no 'create' cuz it's created for us
+      # for secured server clients we want to authenticate them.
+      # by default everyone with a valid cert is allowed.
+      require './authenticate-client'
+    ]
 
-  # our module's API is the two creation functions and an "add a plugin" function
-  # due to the considerable similarity to creating a server socket and a
-  # client socket it uses the same function with an `isServer` boolean value.
-  return fns =
-    client: builder                             # isServer = false
-    server: (options) -> builder options, true  # isServer = true
-    use: (plugin, options) ->
-      # get the plugin instance function
-      plugin = getPlugin plugin, options
+    if @_options?.noRelisten then @_serverChain.disable 'cio/relistener'
 
-      # if we received an error back, then return it
-      if plugin.error? then return plugin
+    return
 
-      # add the plugin to our chain
-      chain.add plugin
+
+  client: (options) ->
+    result = @_run @_clientChain, options
+    if result.failed? then result
+    else result.context.client
+
+  server: (options) ->
+    result = @_run @_serverChain, options
+    if result.failed? then result
+    else result.context.server
+
+  _run: (chain, options) ->
+    # # build options for chain.run(), choose the options which exists
+    # if they specified options specific to the chain, pull them out
+    runOptions = options?.chain ? {}
+
+    # set the context to be the most recent options object
+    runOptions.context ?= options ? @_options ? {}
+
+    # if they both exist, put the class one as a parent of the new one
+    if options? and @_options? then options.__proto__ = @_options
+
+    # call the chain
+    chain.run runOptions
+
+  # users supply listeners based on which socket they apply to.
+  # use generic functions cuz it's a similar pattern
+  onClient      : (args...) -> @_fromArgs @_clientChain, args
+  onServer      : (args...) -> @_fromArgs @_serverChain, args
+  onServerClient: (args...) -> @_fromArgs @_serverClientChain, args
+
+  # look thru args and load stuff
+  _fromArgs: (chain, args) ->
+    # unwrap an array arg
+    if Array.isArray args[0] then args = args[0]
+
+    # for each arg, load it, and add the fn to the chain.
+    # if an error occurs, return it immediately
+    for arg in args
+      fn = @_load arg
+      if fn.error? then return fn
+      result = chain.add fn
+      if result?.error? then return result
+
+  # load a string via require(), return a function, or return an error otherwise
+  _load: (arg) ->
+    switch typeof arg
+      when 'string'
+        try
+          @_load require arg
+        catch error
+          error:'Unable to require module: ' + arg, reason:error
+
+      when 'function' then arg
+
+      else error:'must be a require()\'able string or a function',arg:arg
+
+
+module.exports = (options) ->
+
+  # if the certs are provided then try to read them now
+  if options?
+    result = readCerts options
+    if result?.error? then return result
+
+  new Cio options

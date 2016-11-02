@@ -1,4 +1,3 @@
-
 var corepath = require('path')
   , dir = __dirname + corepath.sep
   , shell = require('shelljs')

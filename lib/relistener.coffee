@@ -1,11 +1,11 @@
+module.exports = ->
 
-module.exports = (options) ->
-
-  {server, relisten} = options
+  # alias
+  server = @server
 
   # if they didn't specify a relisten function, then, we'll change listen()
   # to remember its args so we can reuse them.
-  unless relisten?
+  unless @relisten?
     # remember the args in this var
     listenArgs = null
 
@@ -31,8 +31,8 @@ module.exports = (options) ->
     # remembered from them calling listen()
     relisten = -> server.originalListen listenArgs...
 
-  retryDelay = options.retryDelay ? 3000
-  maxRetries = options.maxRetries ? 3
+  retryDelay = @retryDelay ? 3000
+  maxRetries = @maxRetries ? 3
 
   # start out with zero retries
   server.inUseRetryCount = 0
@@ -47,7 +47,7 @@ module.exports = (options) ->
       if server.inUseRetryCount < maxRetries
 
         # notify them
-        console.error "Address in use, retrying in #{retryDelay / 1000} seconds..."
+        console.error 'Address in use, retrying in', (retryDelay / 1000), 'seconds...'
 
         # remember we tried
         server.inUseRetryCount++
@@ -60,6 +60,9 @@ module.exports = (options) ->
             relisten()
         ), retryDelay
 
+        # # could mark we handled this error, for other error listeners...
+        # error.handled = true
+
       # else, we've gone too far. give up.
       else
         console.error "Address in use. Exiting after #{server.inUseRetryCount} retries."
@@ -67,3 +70,9 @@ module.exports = (options) ->
 
     # else, it's another kind of error, so, we don't do anything with that...
     return
+
+  return
+
+module.exports.options =
+  id: 'cio/relistener'
+  after: [ 'cio/createServer']

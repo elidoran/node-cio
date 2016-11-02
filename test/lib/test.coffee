@@ -4,9 +4,6 @@ assert = require 'assert'
 
 buildCio = require '../../lib'
 
-# no options yet...
-cio = buildCio()
-
 # help reference helper files
 helperFile = (name) -> corepath.resolve __dirname, '..', 'helpers', name
 
@@ -14,23 +11,40 @@ describe 'test cio', ->
 
   describe 'errors', ->
 
-    it 'should return an error because string is an invalid plugin', ->
+    it 'should return an error because `key` string is an invalid file path', ->
 
-      badCio = buildCio plugins: [ '/invalid/plugin' ]
+      badCio = buildCio key: 'bad/path'
+
       assert badCio.error
       assert badCio.reason
-      assert.equal badCio.reason.reason, 'Cannot find module \'/invalid/plugin\''
+      assert.equal badCio.error, 'Unable to read \'key\' from: ' + corepath.resolve('bad/path')
 
-    it 'should return an error because a function returning a string is an invalid plugin', ->
+    it 'should return an error because `cert` string is an invalid file path', ->
 
-      badCio = buildCio plugins: [ -> 'invalid plugin' ]
+      badCio = buildCio cert: 'bad/path'
+
       assert badCio.error
-      assert.equal badCio.reason.error, 'Elements must be functions'
+      assert badCio.reason
+      assert.equal badCio.error, 'Unable to read \'cert\' from: ' + corepath.resolve('bad/path')
 
+    it 'should return an error because `ca` string is an invalid file path', ->
+
+      badCio = buildCio ca: 'bad/path'
+
+      assert badCio.error
+      assert badCio.reason
+      assert.equal badCio.error, 'Unable to read \'ca\' from: ' + corepath.resolve('bad/path')
+
+    ###
+      TODO:
+        allow aliases in builder function...
+    ###
 
   describe 'client and server', ->
 
     describe 'with defaults', ->
+
+      cio = buildCio()
 
       # remember these for assertions
       client = null
@@ -44,7 +58,7 @@ describe 'test cio', ->
 
         # use `cio` to create a server with a tranform (and an arbitrary port)
         server = cio.server
-          retryDelay: 100
+          # retryDelay: 100
           onConnect: (connection) ->
             serverConnection = connection
             serverConnection.on 'data', (data) ->
@@ -71,10 +85,11 @@ describe 'test cio', ->
         server.on 'close', -> closed = true
 
       before 'wait for server to listen', (done) ->
-        # server.listen done
+
         server.listen 1357, 'localhost', done
 
       before 'wait for server to close', (done) ->
+
         server.on 'close', done
 
       it 'should listen', -> assert.equal listening, true
@@ -97,6 +112,8 @@ describe 'test cio', ->
         require(helperFile 'genscripts.js')(done)
 
       describe 'in standard property names', ->
+
+        cio = buildCio()
 
         # remember these for assertions
         client    = null
@@ -156,6 +173,8 @@ describe 'test cio', ->
 
       describe 'in my property aliases', ->
 
+        cio = buildCio()
+
         # remember these for assertions
         client    = null
         server    = null
@@ -212,6 +231,8 @@ describe 'test cio', ->
 
       describe 'and default relisten()', ->
 
+        cio = buildCio()
+
         serverPort = 4680
 
         # remember these for assertions
@@ -224,6 +245,7 @@ describe 'test cio', ->
 
         # let's create another server which uses the same port to cause EADDRINUSE
         otherServer = cio.server()
+
         otherServer.listen serverPort, 'localhost'
 
         # use `cio` to create a server with a tranform (and an arbitrary port)
@@ -234,10 +256,6 @@ describe 'test cio', ->
             serverConnection.on 'end', -> server.close()
           retryDelay: 100
           maxRetries: 5
-          # relisten: ->
-          #   relistened++
-          #   if relistened > 1 then otherServer.close()
-          #   server.listen SERVER_PORT
 
         server.on 'relisten', ->
           relistened++
@@ -276,6 +294,8 @@ describe 'test cio', ->
 
 
       describe 'and specified relisten option', ->
+
+        cio = buildCio()
 
         serverPort = 6820
 

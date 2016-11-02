@@ -51,13 +51,13 @@ class Cio
 
   client: (options) ->
     result = @_run @_clientChain, options
-    if result?.failed? then result
-    else result?.context?.client
+    if result.failed? then result
+    else result.context.client
 
   server: (options) ->
     result = @_run @_serverChain, options
-    if result?.failed? then result
-    else result?.context?.server
+    if result.failed? then result
+    else result.context.server
 
   _run: (chain, options) ->
     # # build options for chain.run(), choose the options which exists

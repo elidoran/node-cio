@@ -1,6 +1,6 @@
-module.exports = (control) ->
+module.exports = (control, context) ->
 
-  result = require('./read-certs') this # this is the options
+  result = require('./read-certs') context # this is the options
 
   if result?.error? then control.fail result.error, result.reason
 

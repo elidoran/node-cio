@@ -5,7 +5,8 @@ module.exports = ->
 
   # if they didn't specify a relisten function, then, we'll change listen()
   # to remember its args so we can reuse them.
-  unless @relisten?
+  relisten = @relisten
+  unless relisten?
     # remember the args in this var
     listenArgs = null
 

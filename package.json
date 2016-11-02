@@ -38,14 +38,11 @@
   "bugs": "http://github.com/elidoran/node-cio/issues",
   "devDependencies": {
     "coffee-script": "^1.11.1",
-    "mocha": "^2.5.3",
+    "mocha": "^3.1.2",
     "through2": "^2.0.1"
   },
   "dependencies": {
-    "duplex-emitter": "^2.1.2",
-    "json-duplex-stream": "^1.2.0",
-    "mux-demux": "^3.7.9",
-    "reconnect-net": "^1.1.1"
+    "chain-builder": "^0.11.1"
   },
   "engines": {
     "node": ">=0.12"

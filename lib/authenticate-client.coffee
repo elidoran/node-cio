@@ -10,7 +10,7 @@ module.exports =  ->
   clientName = peer.subject.CN
 
   # check if they're allowed
-  unless isClientAllowed clientName
+  unless isClientAllowed clientName, peer
 
     # if they specified a function to 'reject' the client, use it
     if @rejectClient? then @rejectClient @connection, clientName

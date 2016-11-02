@@ -3,6 +3,19 @@ tls = require 'tls'
 buildChain = require 'chain-builder'
 readCerts = require './read-certs'
 
+# this is used to order the array of functions used by an event chain
+order = require 'ordering'
+
+# mark a chain as *not* ordered when an add/remove occurs
+markChanged = (event) -> event.chain.__isOrdered = false
+
+# order the array before a chain run executes
+ensureOrdered = (event) ->
+  unless event.chain.__isOrdered is true
+    order event.chain.array
+    event.chain.__isOrdered = true
+
+
 class Cio
 
   constructor: (@_options) ->
@@ -14,6 +27,13 @@ class Cio
     @_clientChain = buildChain()
     @_serverChain = buildChain()
     @_serverClientChain = buildChain()
+
+    # order the chains
+    for chain in [ @_clientChain, @_serverChain, @_serverClientChain ]
+      chain.on 'add', markChanged
+      chain.on 'remove', markChanged
+      chain.on 'start', ensureOrdered
+
 
     @_clientChain.add [
       # functions for building a new client

@@ -1,81 +1,84 @@
-
 net = require 'net'
 tls = require 'tls'
-# TODO:
-# reconnect = require 'reconnect-net'
 
-# i dislike having to read all these when they may not be used even once...
-# but, it's expected to require early on to discover if they're missing and
-# so they're near the top (easy to find)
-addListeners = require './add-listeners'
-readCerts    = require './read-certs'
-relistener = require './relistener'
+class Cio
 
-module.exports = (builderOptions) ->
+  constructor: (@_options) ->
+    @_readCerts @_options
+    @_events = new require('events').EventEmitter
 
-  # TODO: builderOptions...
+  _readCerts: require './read-certs'
+  _relistener: require './relistener'
 
-  # build socket builder function
-  builder = (isServer, options) ->
+  _build: (isServer, options = {}) ->
 
-    # if there are cert file paths specified, read the files now
-    readCerts options
+    # 1. combine options
+    if @_options?
+      options[key] ?= value for key,value of @_options
 
-    # TODO: when `defaultOptions` actually has some values, we'll want to
-    # combine options and defaultOptions now...
-
-    # 1. secure if some options related to a secure connection are specified
+    # 2. secure if some options related to a secure connection are specified
     if options.rejectUnauthorized or options.key? or options.private? or options.requestCert
-      secure = true
-      # convert aliases
-      if options.private? then options.key = options.private
-      if options.public? then options.cert = options.public
-      if options.root? then options.ca = options.root
+      isSecure = true
+      # copy aliases and delete them
+      for alias,key of private:'key', public:'cert', root:'ca'
+        options[key] = options[alias]
+        delete options[alias]
 
+    # 3. if there are cert file paths specified, read the files now
+    @_readCerts options
 
-    # 2. choose creator and use its function to build the socket
-    socket = do (isServer, secure) ->
+    # 4. choose creator and use its function to build the socket
+    socket = do (isServer, isSecure) ->
       functionName = if isServer then 'createServer' else 'connect'
-      creator = if secure then tls else net
-      # TODO: use `reconnect-net` for client
+      creator = if isSecure then tls else net
       creator[functionName] options
 
-    # always add our own listener first so we can do some work for them
-    # TODO: unless directed not to...
+    # 5. call listeners
+    if isServer # emit the server socket, and when clients connect to it
+      @_events.emit 'ns', socket, options, builderOptions
+      which = if isSecure then 'secureConnection' else 'connection'
+      events = @_events
+      socket.on which, (conn) -> events.emit 'nsc', conn, options, builderOptions
 
-    # 3. decide which connection listeners to add
-    whichEvents = []
-    # it's complicated for a server because it can be secured or not...
-    # and, it's possible to listen to *both* unsecured and secured
-    if isServer
-      # if secure, then we always add to 'secureConnection'
-      if secure then whichEvents.push 'secureConnection'
-      # if not secure then we always add to 'connection'
-      # also, if it's secure, but they specify an `onConnect`, then we do 'connection'
-      if not secure or options.onConnect? then whichEvents.push 'connection'
+    # otherwise, tell them it's a client socket
+    else @_events.emit 'nc', socket, options, builderOptions
 
-    # client is simple... it's always 'connect'
-    else whichEvents.push 'connect'
+    # 6. add their listeners, if they exist
+    if options.onSecureConnect?
+      socket.on 'secureConnection', options.onSecureConnect
 
-    # 4. add listeners
-    addListeners options, socket, whichEvents
-
-    # 5. add their listeners, if they exist
-    # TODO: wrap this first one with `if isServer` ?
-    if options.onSecureConnect? then socket.on 'secureConnection', options.onSecureConnect
     if options.onConnect?
       socket.on (if isServer then 'connection' else 'connect'), options.onConnect
 
-    # 6. unless 'address-in-use' helper is specified to *not* be used, then add it
+    # 7. unless 'address-in-use' helper is specified to *not* be used, then add it
     # for 'listening' to retry listen() the config'd number of times with config'd delay
-    if isServer and not options.noRelisten then relistener server:socket
+    if isServer and not options.noRelisten then @_relistener server:socket
 
-    # 7. all done
+    # all done
     return socket
 
-  return fns =
-    # could use bind() here, but, I find it harder to read...
-    # client: builder.bind builder, false # isServer = false
-    # server: builder.bind builder, true  # isServer = true
-    client: (options) -> builder false, options # isServer = false
-    server: (options) -> builder true, options  # isServer = true
+  # load a string via require(), return a function, and return an error otherwise
+  _load: (arg) ->
+    switch typeof arg
+      when 'string' then @_load require arg
+      when 'function' then arg
+      else error:'must be requireable string or function',arg:arg
+
+  # look thru args and load stuff
+  _fromArgs: (event, args) ->
+    if Array.isArray args[0] then args = args[0]
+
+    for arg in args
+      fn = @_load arg
+      if fn.error? then return fn
+      @_events.on event, fn
+
+    client: (options) -> @_build false, options # isServer = false
+    server: (options) -> @_build true, options  # isServer = true
+
+    onClient      : (args...) -> @_fromArgs 'nc', args  # 'nc'  = 'new client'
+    onServer      : (args...) -> @_fromArgs 'ns', args  # 'ns'  = 'new server'
+    onServerClient: (args...) -> @_fromArgs 'nsc', args # 'nsc' = 'new server client'
+
+
+module.exports = (options) -> new Cio options

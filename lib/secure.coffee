@@ -1,5 +1,5 @@
 module.exports = ->
-  @isSecure = @rejectUnauthorized or @key? or @private? or @requestCert
+  @isSecure ?= @key? or @rejectUnauthorized is true or @requestCert is true
 
   return
 

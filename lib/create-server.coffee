@@ -10,7 +10,7 @@ module.exports = (_, context)->
     creator = net
     which = 'connection'
 
-  @server = creator.createServer options
+  @server = creator.createServer context
 
   if @onConnect? then @server.on 'connection', @onConnect
   if @onSecureConnect? then @server.on 'secureConnection', @onSecureConnect

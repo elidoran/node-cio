@@ -222,13 +222,13 @@ Name        | type   | Client/Server | Description
 
 Not yet implemented (X), or, being moved to the `@cio` scope (!):
 
-?  | Name        | type   | Client/Server | Description
--- | ----:       | :---:  | :------: | :-------
-X  | reconnect | bool | client | use `reconnect-net` to handle reconnecting. **not yet implemented**
-!  | [multiplex](https://github.com/elidoran/node-cio/blob/master/lib/multiplex.coffee)   | bool   | both | use `mux-demux` for multiplexing connection
-!  | [eventor](https://github.com/elidoran/node-cio/blob/master/lib/eventor.coffee)     | bool   | both | use `duplex-emitter`. if `multiplex` is true, create 'events' stream
-!  | [jsonify](https://github.com/elidoran/node-cio/blob/master/lib/jsonify.coffee)     | bool   | both | run connection thru `json-duplex-stream` for in+out
-!  | [transform](https://github.com/elidoran/node-cio/blob/master/lib/transformer.coffee)   | Transform | both | pipe connection thru Transform and back to connection. if `jsonify` is true then the Transform is in the middle: `conn -> json.in -> transform -> json.out -> conn`
+ ?  | Name        | type   | Client/Server | Description
+:-: | ----:       | :---:  | :------: | :-------
+ X  | reconnect | bool | client | use `reconnect-net` to handle reconnecting. **not yet implemented**
+ !  | [multiplex](https://github.com/elidoran/node-cio/blob/master/lib/multiplex.coffee)   | bool   | both | use `mux-demux` for multiplexing connection
+ !  | [eventor](https://github.com/elidoran/node-cio/blob/master/lib/eventor.coffee)     | bool   | both | use `duplex-emitter`. if `multiplex` is true, create 'events' stream
+ !  | [jsonify](https://github.com/elidoran/node-cio/blob/master/lib/jsonify.coffee)     | bool   | both | run connection thru `json-duplex-stream` for in+out
+ !  | [transform](https://github.com/elidoran/node-cio/blob/master/lib/transformer.coffee)   | Transform | both | pipe connection thru Transform and back to connection. if `jsonify` is true then the Transform is in the middle: `conn -> json.in -> transform -> json.out -> conn`
 
 ## Events
 

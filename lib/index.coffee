@@ -7,6 +7,10 @@ class Cio
 
   constructor: (@_options) ->
 
+    # TODO:
+    #   check for error results from all of these.
+    #   set it on _error for the builder function to find and return
+
     @_clientChain = buildChain()
     @_serverChain = buildChain()
     @_serverClientChain = buildChain()
@@ -42,8 +46,18 @@ class Cio
 
     if @_options?.noRelisten then @_serverChain.disable 'cio/relistener'
 
-  client: (options) -> @_run @_clientChain, options
-  server: (options) -> @_run @_serverChain, options
+    return
+
+
+  client: (options) ->
+    result = @_run @_clientChain, options
+    if result?.failed? then result
+    else result?.context?.client
+
+  server: (options) ->
+    result = @_run @_serverChain, options
+    if result?.failed? then result
+    else result?.context?.server
 
   _run: (chain, options) ->
     # # build options for chain.run(), choose the options which exists
@@ -95,6 +109,8 @@ class Cio
 module.exports = (options) ->
 
   # if the certs are provided then try to read them now
-  readCerts options if options?
+  if options?
+    result = readCerts options
+    if result?.error? then return result
 
   new Cio options

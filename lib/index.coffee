@@ -21,25 +21,24 @@ class Cio
   # store provided options in `_options`
   constructor: (@_options) ->
 
-    # TODO:
-    #   check for error results from all of these.
-    #   set it on _error for the builder function to find and return
 
+  # add the listeners to a chain which provide ordering
   _addOrdering: (chain) ->
     chain.on 'add', markChanged
     chain.on 'remove', markChanged
     chain.on 'start', ensureOrdered
     return chain
 
-    @_serverChain = buildChain()
-    @_serverClientChain = buildChain()
 
+  # an overridable 'maker' function which accepts the listeners for a chain
   _makeChain: (listeners) ->
 
     chain = @_addOrdering buildChain()
     chain.add listeners
     return chain
 
+
+  # get the actual client chain, build it when it doesn't exist
   getClientChain: () ->
 
     unless @_clientChain?
@@ -55,6 +54,7 @@ class Cio
     return @_clientChain
 
 
+  # get the actual server chain, build it when it doesn't exist
   getServerChain: () ->
 
     unless @serverChain?
@@ -74,6 +74,7 @@ class Cio
     return @_serverChain
 
 
+  # get the actual server client chain, build it when it doesn't exist
   getServerClientChain: () ->
 
     unless @_serverClientChain?
@@ -92,16 +93,21 @@ class Cio
     return @_serverClientChain
 
 
+  # build a new client socket, return the socket or the build chain failure
   client: (options) ->
     result = @_run @getClientChain(), options
     if result.failed? then result
     else result.context.client
 
+
+  # build a new server socket, return the socket or the build chain failure
   server: (options) ->
     result = @_run @getServerChain(), options
     if result.failed? then result
     else result.context.server
 
+
+  # client() and server() use this to run their build chains
   _run: (chain, options) ->
     # # build options for chain.run(), choose the options which exists
     # if they specified options specific to the chain, pull them out
@@ -119,11 +125,13 @@ class Cio
     # call the chain
     chain.run runOptions
 
+
   # users supply listeners based on which socket they apply to.
   # use generic functions cuz it's a similar pattern
   onClient      : (args...) -> @_fromArgs @getClientChain(), args
   onServer      : (args...) -> @_fromArgs @getServerChain(), args
   onServerClient: (args...) -> @_fromArgs @getServerClientChain(), args
+
 
   # look thru args and load stuff
   _fromArgs: (chain, args) ->
@@ -137,6 +145,7 @@ class Cio
       if fn.error? then return fn
       result = chain.add fn
       if result?.error? then return result
+
 
   # load a string via require(), return a function, or return an error otherwise
   _load: (arg) ->
@@ -152,6 +161,8 @@ class Cio
       else error:'must be a require()\'able string or a function',arg:arg
 
 
+# export a builder function which tries to read certs, when specified,
+# so this will "fail fast" if there's a problem reading the cert files
 module.exports = (options) ->
 
   # if the certs are provided then try to read them now

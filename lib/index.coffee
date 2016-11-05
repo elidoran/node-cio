@@ -146,6 +146,8 @@ class Cio
       result = chain.add fn
       if result?.error? then return result
 
+    return
+
 
   # load a string via require(), return a function, or return an error otherwise
   _load: (arg) ->

@@ -13,7 +13,10 @@ This will do all the work for you to create client or server sockets setup for:
 
 Additional features available in `@cio` scope:
 
-1. TODO: fill these in (coming soon...)
+1. [@cio/duplex-emitter](https://www.npmjs.com/package/@cio/duplex-emitter)
+2. [@cio/transformer](https://www.npmjs.com/package/@cio/transformer)
+3. [@cio/oboe](https://www.npmjs.com/package/@cio/oboe)
+
 
 See [chain-builder](https://www.npmjs.com/package/chain-builder) for more on how each worker chain operates.
 

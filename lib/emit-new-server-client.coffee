@@ -18,6 +18,8 @@ module.exports = (_, context) ->
           enumerable : true
           configurable: true
 
+    return
+
 module.exports.options =
   id: 'cio/emit-new-server-client'
   after: [ 'cio/createServer']

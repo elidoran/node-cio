@@ -13,7 +13,7 @@ module.exports =  ->
   unless isClientAllowed clientName, peer
 
     # if they specified a function to 'reject' the client, use it
-    if @rejectClient? then @rejectClient @connection, clientName, peer
+    if @rejectClient? then @rejectClient @serverClient, clientName, peer
 
     # otherwise emit an error event on the socket
     else

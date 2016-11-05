@@ -1,3 +1,10 @@
+0.4.1 - 2016/11/05
+
+1. change other `connection` to `serverClient` (woops)
+2. correct `conigurable` typo
+3. add test with a server client listener
+4. add some valueless returns
+
 0.4.0 - 2016/11/05
 
 1. **big change:** the server client chain provides `serverClient` property instead of `connection` which seems to be a much better name because the others are `client` and `server`, and, the function to add listeners for it is `onServerClient()`.

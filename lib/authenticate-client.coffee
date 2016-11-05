@@ -1,4 +1,5 @@
 module.exports =  ->
+
   # only do this if the server is secure
   if not @isSecure then return
 

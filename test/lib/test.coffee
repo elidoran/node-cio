@@ -58,7 +58,6 @@ describe 'test cio', ->
 
         # use `cio` to create a server with a tranform (and an arbitrary port)
         server = cio.server
-          # retryDelay: 100
           onConnect: (connection) ->
             serverConnection = connection
             serverConnection.on 'data', (data) ->
@@ -99,6 +98,82 @@ describe 'test cio', ->
       it 'should receive', -> assert.equal received, 'done'
 
       it 'should close', -> assert.equal closed, true
+
+
+    describe.only 'with server-client listener', ->
+
+      cio = buildCio()
+
+      # remember these for assertions
+      client = null
+      server = null
+      received = null
+      listening = false
+      connected = false
+      closed = false
+      serverClient = null
+      serverClientCio = null
+
+
+      before 'build server', ->
+
+        # use `cio` to create a server with a tranform (and an arbitrary port)
+        server = cio.server
+          onConnect: (connection) ->
+            serverConnection = connection
+            serverConnection.on 'data', (data) ->
+              received = data.toString 'utf8'
+            serverConnection.on 'end', ->
+              server.close()
+
+        server.on 'error', (error) -> console.log 'Server error:',error
+
+        # once the server is listening do the client stuffs
+        server.on 'listening', ->
+          listening = true
+
+          # create a client via `cio` with its transform and the same port as the server
+          client = cio.client
+            port     : server.address().port
+            host     : 'localhost'
+            onConnect: ->
+              connected = true
+              client.end 'done', 'utf8'
+
+          client.on 'error', (error) -> console.log 'client error:',error
+
+        server.on 'close', -> closed = true
+
+        cio.onServerClient ->
+          # remember what we received
+          serverClient = @serverClient
+          serverClientCio = @cio
+          return
+
+      before 'wait for server to listen', (done) ->
+        
+        server.listen 1357, 'localhost', done
+
+      before 'wait for server to close', (done) ->
+
+        server.on 'close', done
+
+      it 'should listen', -> assert.equal listening, true
+
+      it 'should connect', -> assert.equal connected, true
+
+      it 'should receive', -> assert.equal received, 'done'
+
+      it 'should close', -> assert.equal closed, true
+
+      it 'should add server-client listener to chain', ->
+        assert cio._serverClientChain, 'should build the chain'
+        assert.equal cio._serverClientChain.array.length, 2, 'should have default listener and this new one (so 2)'
+
+      it 'should provide `serverClient`', -> assert serverClient
+
+      it 'should provide cio to server-client listener', ->
+        assert.strictEqual serverClientCio, cio
 
 
     describe 'with security certs', ->

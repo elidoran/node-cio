@@ -6,7 +6,7 @@ module.exports =  ->
   isClientAllowed = @isClientAllowed ? -> true
 
   # let's get the client name to check
-  peer = @connection.getPeerCertificate()
+  peer = @serverClient.getPeerCertificate()
   clientName = peer.subject.CN
 
   # check if they're allowed

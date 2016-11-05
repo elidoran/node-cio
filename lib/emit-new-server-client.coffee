@@ -6,6 +6,7 @@ module.exports = (_, context) ->
 
   # listen for a connection, run the other chain when we get one
   @server.on which, (connection) ->
+
     context.cio.getServerClientChain().run
       # make it build a new object using the server's options (context)
       # and the new connection only in the new object
@@ -15,7 +16,7 @@ module.exports = (_, context) ->
           value: connection
           writable   : true
           enumerable : true
-          conigurable: true
+          configurable: true
 
 module.exports.options =
   id: 'cio/emit-new-server-client'

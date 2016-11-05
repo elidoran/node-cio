@@ -18,64 +18,87 @@ ensureOrdered = (event) ->
 
 class Cio
 
+  # store provided options in `_options`
   constructor: (@_options) ->
 
     # TODO:
     #   check for error results from all of these.
     #   set it on _error for the builder function to find and return
 
-    @_clientChain = buildChain()
+  _addOrdering: (chain) ->
+    chain.on 'add', markChanged
+    chain.on 'remove', markChanged
+    chain.on 'start', ensureOrdered
+    return chain
+
     @_serverChain = buildChain()
     @_serverClientChain = buildChain()
 
-    # order the chains
-    for chain in [ @_clientChain, @_serverChain, @_serverClientChain ]
-      chain.on 'add', markChanged
-      chain.on 'remove', markChanged
-      chain.on 'start', ensureOrdered
+  _makeChain: (listeners) ->
+
+    chain = @_addOrdering buildChain()
+    chain.add listeners
+    return chain
+
+  getClientChain: () ->
+
+    unless @_clientChain?
+
+      @_clientChain = @_makeChain [
+        # functions for building a new client
+        require './move-aliases'
+        require './secure'
+        require './ensure-certs'
+        require './create-client' # includes adding connect listener from options
+      ]
+
+    return @_clientChain
 
 
-    @_clientChain.add [
-      # functions for building a new client
-      require './move-aliases'
-      require './secure'
-      require './ensure-certs'
-      require './create-client' # includes adding connect listener from options
-    ]
+  getServerChain: () ->
 
-    @_serverChain.add [
-      # functions for building a new server
-      require './move-aliases'
-      require './secure'
-      require './ensure-certs'
-      require './create-server' # includes adding connect listener from options
-      require './relistener'
-      require('./emit-new-server-client') serverClientChain:@_serverClientChain
-    ]
+    unless @serverChain?
 
-    @_serverClientChain.add [
-      # functions for affecting a new server client
-      # no aliases cuz no cert stuff for a server client
-      # there aren't new options for this...require './combine-options'
-      # no 'secured' cuz there's no cert stuff for a server client
-      # no 'create' cuz it's created for us
-      # for secured server clients we want to authenticate them.
-      # by default everyone with a valid cert is allowed.
-      require './authenticate-client'
-    ]
+      @_serverChain = @_makeChain [
+        # functions for building a new server
+        require './move-aliases'
+        require './secure'
+        require './ensure-certs'
+        require './create-server' # includes adding connect listener from options
+        require './relistener'
+        require './emit-new-server-client'
+      ]
 
-    if @_options?.noRelisten then @_serverChain.disable 'cio/relistener'
+      if @_options?.noRelisten then @_serverChain.disable 'cio/relistener'
 
-    return
+    return @_serverChain
+
+
+  getServerClientChain: () ->
+
+    unless @_serverClientChain?
+
+      @_serverClientChain = @_makeChain [
+        # functions for affecting a new server client
+        # no aliases cuz no cert stuff for a server client
+        # there aren't new options for this...so, no combining
+        # no 'secured' cuz there's no cert stuff for a server client
+        # no 'create' cuz it's created for us
+        # for secured server clients we want to authenticate them.
+        # by default everyone with a valid cert is allowed.
+        require './authenticate-client'
+      ]
+
+    return @_serverClientChain
 
 
   client: (options) ->
-    result = @_run @_clientChain, options
+    result = @_run @getClientChain(), options
     if result.failed? then result
     else result.context.client
 
   server: (options) ->
-    result = @_run @_serverChain, options
+    result = @_run @getServerChain(), options
     if result.failed? then result
     else result.context.server
 
@@ -90,14 +113,17 @@ class Cio
     # if they both exist, put the class one as a parent of the new one
     if options? and @_options? then options.__proto__ = @_options
 
+    # in case a listener needs the `cio` (like the emit-new-server-client)
+    runOptions.context.cio = this
+
     # call the chain
     chain.run runOptions
 
   # users supply listeners based on which socket they apply to.
   # use generic functions cuz it's a similar pattern
-  onClient      : (args...) -> @_fromArgs @_clientChain, args
-  onServer      : (args...) -> @_fromArgs @_serverChain, args
-  onServerClient: (args...) -> @_fromArgs @_serverClientChain, args
+  onClient      : (args...) -> @_fromArgs @getClientChain(), args
+  onServer      : (args...) -> @_fromArgs @getServerChain(), args
+  onServerClient: (args...) -> @_fromArgs @getServerClientChain(), args
 
   # look thru args and load stuff
   _fromArgs: (chain, args) ->

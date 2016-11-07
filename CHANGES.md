@@ -1,3 +1,10 @@
+0.5.0 - 2016/11/06
+
+1. updated dep `ordering`
+2. added a test for when ordering fails
+3. added handling of ordering errors
+
+
 0.4.1 - 2016/11/05
 
 1. change other `connection` to `serverClient` (woops)

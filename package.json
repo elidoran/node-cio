@@ -1,6 +1,6 @@
 {
   "name": "cio",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "Conveniently create net/tls server/client sockets.",
   "main": "lib",
   "keywords": [

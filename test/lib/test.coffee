@@ -35,6 +35,27 @@ describe 'test cio', ->
       assert badCio.reason
       assert.equal badCio.error, 'Unable to read \'ca\' from: ' + corepath.resolve('bad/path')
 
+    it 'should return an error because ordering is impossible', ->
+
+      fn1 = ->
+      fn2 = ->
+
+      fn1.options = id:'fn1', after: [ 'fn2' ]
+      fn2.options = id:'fn2', after: [ 'fn1' ]
+
+      cio = buildCio()
+
+      clientChain = cio.getClientChain()
+
+      cio.onClient fn1, fn2
+
+      result = cio.client()
+
+      assert.equal clientChain.array.length, 7, 'should have core listeners and our two'
+      assert.equal result?.failed?.reason, 'Unable to order the chain'
+      assert result.failed.error, 'should have the error from ordering module'
+
+
     ###
       TODO:
         allow aliases in builder function...
@@ -100,7 +121,7 @@ describe 'test cio', ->
       it 'should close', -> assert.equal closed, true
 
 
-    describe.only 'with server-client listener', ->
+    describe 'with server-client listener', ->
 
       cio = buildCio()
 
@@ -151,7 +172,7 @@ describe 'test cio', ->
           return
 
       before 'wait for server to listen', (done) ->
-        
+
         server.listen 1357, 'localhost', done
 
       before 'wait for server to close', (done) ->
@@ -168,7 +189,7 @@ describe 'test cio', ->
 
       it 'should add server-client listener to chain', ->
         assert cio._serverClientChain, 'should build the chain'
-        assert.equal cio._serverClientChain.array.length, 2, 'should have default listener and this new one (so 2)'
+        assert.equal cio._serverClientChain.array.length, 3, 'should have default listener, order checker, and this new one (so 3)'
 
       it 'should provide `serverClient`', -> assert serverClient
 

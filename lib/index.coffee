@@ -11,9 +11,27 @@ markChanged = (event) -> event.chain.__isOrdered = false
 
 # order the array before a chain run executes
 ensureOrdered = (event) ->
+
   unless event.chain.__isOrdered is true
-    order event.chain.array
-    event.chain.__isOrdered = true
+    result = order event.chain.array
+
+    if result?.error?
+      #event.chain.emit 'order error', result
+      event.chain.__orderError = result
+
+    else
+      event.chain.array = result.array
+      event.chain.__isOrdered = true
+
+# when the chain runs, first, check if there was an error during order()
+checkOrderedError = (control) ->
+  # get error from chain
+  error = control._chain.__orderError
+  # if it exists, then we fail()
+  if error? then control.fail 'Unable to order the chain', error
+
+# ensure if ordering occurs then this is first...?
+checkOrderedError.options = id:'CheckOrderedError', before:['*']
 
 
 class Cio
@@ -24,9 +42,10 @@ class Cio
 
   # add the listeners to a chain which provide ordering
   _addOrdering: (chain) ->
-    chain.on 'add', markChanged
-    chain.on 'remove', markChanged
-    chain.on 'start', ensureOrdered
+    chain.on 'add', markChanged      # only do ordering when we add something
+    chain.on 'remove', markChanged   # or if we remove something
+    chain.on 'start', ensureOrdered  # do the ordering once before starting
+    chain.add checkOrderedError      # if there's an error then fail()
     return chain
 
 
@@ -96,14 +115,14 @@ class Cio
   # build a new client socket, return the socket or the build chain failure
   client: (options) ->
     result = @_run @getClientChain(), options
-    if result.failed? then result
+    if result.failed? or result.error? then result
     else result.context.client
 
 
   # build a new server socket, return the socket or the build chain failure
   server: (options) ->
     result = @_run @getServerChain(), options
-    if result.failed? then result
+    if result.failed? or result.error? then result
     else result.context.server
 
 
